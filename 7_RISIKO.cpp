@@ -7,5 +7,4 @@ int main()
 {
 	BaseWindow bWin;
 	bWin.start_window();
-
 }
