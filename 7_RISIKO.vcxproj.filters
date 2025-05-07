@@ -18,15 +18,9 @@
     <ClCompile Include="7_RISIKO.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
-    <ClCompile Include="BaseWindow.cpp">
-      <Filter>File di origine</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
-      <Filter>File di intestazione</Filter>
-    </ClInclude>
-    <ClInclude Include="BaseWindow.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
   </ItemGroup>
