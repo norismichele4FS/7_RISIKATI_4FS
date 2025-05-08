@@ -111,6 +111,7 @@ int main()
 		{"alberta","alaska"},
 		{"ontario","groenlandia"},
 		{"ontario","territori del nord ovest"},
+		{"ontario","stati uniti occidentali"}, 
 		// Territori del continente oceania
 		{"australia occidentale","australia orientale"},
 		{"australia occidentale","nuova guinea"},
