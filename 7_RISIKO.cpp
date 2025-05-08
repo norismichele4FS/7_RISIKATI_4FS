@@ -1,5 +1,4 @@
 #include <iostream>
-#include <algorithm>
 #include <SFML/Graphics.hpp>
 #include "Territorio.h"
 
