@@ -48,7 +48,7 @@ int main()
 		// Territori del continente oceania
 		Territorio("australia occidentale","oceania", 3, Color(237,58,150,255)),
 		Territorio("australia orientale", "oceania", 3, Color(245,177,208,255)),
-		Territorio("nuova guinea", "oceania", 4, Color(168,33,141,255)),
+		Territorio("nuova guinea", "oceania", 3, Color(168,33,141,255)),
 		Territorio("indonesia", "oceania", 2, Color(235,121,173,255)),
 
 		// Territori del continente asia - colori da sistemare 
