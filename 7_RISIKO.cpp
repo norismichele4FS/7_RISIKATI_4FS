@@ -5,7 +5,7 @@
 using namespace std;
 using namespace sf;
 
-bool sonoConfinanti(const vector<pair<string, string>>&, const string&, const string&);
+bool sonoConfinanti(vector<pair<string, string>>&, string, string);
 
 int main()
 {
@@ -110,7 +110,7 @@ int main()
 		{"alberta","alaska"},
 		{"ontario","groenlandia"},
 		{"ontario","territori del nord ovest"},
-		{"ontario","stati uniti occidentali"}, 
+		{"ontario","stati uniti occidentali"},
 		// Territori del continente oceania
 		{"australia occidentale","australia orientale"},
 		{"australia occidentale","nuova guinea"},
@@ -216,8 +216,8 @@ int main()
 
 }
 
-bool sonoConfinanti(const vector<pair<string, string>>& confiniTerritori, const string& a, const string& b) {
-	for (const auto& coppia : confiniTerritori) {
+bool sonoConfinanti(vector<pair<string, string>>& confiniTerritori, string a, string b) {
+	for (auto& coppia : confiniTerritori) {
 		if ((coppia.first == a && coppia.second == b) ||
 			(coppia.first == b && coppia.second == a)) {
 			return true;

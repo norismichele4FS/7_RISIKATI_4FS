@@ -12,8 +12,7 @@ private:
 	string idContinente;
 	int puntiControllo;
 	Color colore;
-
-	// 0 = nessun giocatore, 1 = giocatore 1, 2 = giocatore 2, ecc.
+	// -1 = nessun giocatore, 0 = giocatore 1, 1 = giocatore 2, ecc.
 	int idGiocatore;
 	int numArmate;
 public:
@@ -24,9 +23,7 @@ public:
 	int getNumArmate();
 	int getPuntiControllo();
 	Color getColore();
-
 	void setNumArmate(int numArmate);
 	void setIdGiocatore(int idGiocatore);
-	~Territorio();
 };
 

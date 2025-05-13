@@ -136,9 +136,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="7_RISIKO.cpp" />
+    <ClCompile Include="Territorio.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h" />
+    <ClInclude Include="Territorio.h" />
   </ItemGroup>
   <ItemGroup>
     <Image Include="mappa_modificata.png" />
