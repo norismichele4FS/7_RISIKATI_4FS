@@ -1,6 +1,6 @@
 #include "Player.h"
 
-Player::Player(string name) : name(name), numArmate(0), carte{ 0, 0, 0, 0 } {}
+Player::Player(string name, int numArmate) : name(name), numArmate(numArmate), carte{ 0, 0, 0, 0 } {}
 
 string Player::getName() { return name; }
 
@@ -20,4 +20,9 @@ void Player::removeCarte(int nCav, int nCan, int nFan, int nJol) {
 array<int, 4> Player::getCarte()
 {
 	return carte;
+}
+
+string Player::getObbiettivo()
+{
+	return obbiettivo;
 }

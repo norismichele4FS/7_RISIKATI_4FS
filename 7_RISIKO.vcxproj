@@ -136,9 +136,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="7_RISIKO.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="Territorio.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Player.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="Territorio.h" />
   </ItemGroup>

@@ -1,11 +1,15 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
+#include <string>
 #include "Territorio.h"
+#include "Player.h"
 
 using namespace std;
 using namespace sf;
 
 bool sonoConfinanti(vector<pair<string, string>>&, string, string);
+void initGiocatori(vector<Player>&);
+int winner(Player& giocatore); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
 
 int main()
 {
@@ -155,9 +159,28 @@ int main()
 		{"ucraina","afghanistan"},
 		{"ucraina","urali"}
 	};
+	string obbiettivi[16] = {
+		"Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.",
+		"Conquistare l’Asia e l’America del Sud.",
+		"Conquistare l’America del Nord e l’Africa.",
+		"Conquistare l’America del Nord e l’Oceania.",
+		"Conquistare l’Europa e l’Oceania.",
+		"Conquistare l’Asia e l’Africa.",
+		"Conquistare l’America del Nord e l’America del Sud.",
+		"Conquistare l’Europa e l’America del Nord.",
+		"Distruggere tutte le armate del giocatore di colore rosso. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore blu. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore giallo. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore verde. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore nero. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore viola. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Conquistare 24 territori a tua scelta.",
+		"Conquistare 18 territori con almeno due armate ciascuno."
+	};
 	Texture mappa_originale;
 	Image mappa_modificata;
 	Color temp;
+	vector<Player> giocatori;
 
 	try {
 		if (!mappa_originale.loadFromFile("mappa_originale.png")) {
@@ -172,12 +195,14 @@ int main()
 		cerr << e.what() << endl;
 		return -1;
 	}
+	initGiocatori(giocatori);
 
 	// Crea lo sprite della mappa originale
 	Sprite sprite_mappa_originale(mappa_originale);
-
 	// Crea la finestra
 	RenderWindow map_window(VideoMode({ mappa_originale.getSize().x, mappa_originale.getSize().y }), "RISIKO", Style::Titlebar | Style::Resize | Style::Close);
+
+	string temp1 = " ", temp2;
 
 	while (map_window.isOpen())
 	{
@@ -188,15 +213,24 @@ int main()
 				map_window.close();
 			}
 
+			// Resize window
+			if (event->is<Event::Resized>()) {
+				// Resize the view to the new size of the window
+				map_window.setSize({ (unsigned int)map_window.getSize().x, (unsigned int)(mappa_modificata.getSize().y * map_window.getSize().x / (double)mappa_modificata.getSize().x) });
+			}
+
 			if (event->is<Event::MouseButtonPressed>()) {
 				if (Mouse::isButtonPressed(Mouse::Button::Left))
 				{
-					temp = mappa_modificata.getPixel({ (unsigned int)Mouse::getPosition().x - map_window.getPosition().x - 8, (unsigned int)Mouse::getPosition().y - map_window.getPosition().y - 31 });
-					//cout << to_string(prova.r) + " " + to_string(prova.g) + " " + to_string(prova.b) + "( " + to_string(Mouse::getPosition().x - map_window.getPosition().x - 8) + " , " + to_string(Mouse::getPosition().y - map_window.getPosition().y - 31) + " )" << endl;
+					temp = mappa_modificata.getPixel({ (unsigned int)((Mouse::getPosition().x - map_window.getPosition().x - 8) * ((double)mappa_modificata.getSize().x / map_window.getSize().x)), (unsigned int)((Mouse::getPosition().y - map_window.getPosition().y - 31) * ((double)mappa_modificata.getSize().y / map_window.getSize().y)) });
+					//cout << "( " + to_string(Mouse::getPosition().x - map_window.getPosition().x - 8) + " , " + to_string(Mouse::getPosition().y - map_window.getPosition().y - 31) + " )" << endl;
 					for (Territorio terri : territori) {
 						if (temp == terri.getColore()) {
 							//cout << "Territorio: " + territorio.getId() + " - Giocatore: " + to_string(territorio.getIdGiocatore()) + " - Armate: " + to_string(territorio.getNumArmate()) << endl;
-							if (sonoConfinanti(confiniTerritori, terri.getId(), "cina")) { cout << "confinantee" << endl; };
+							temp1 = temp2;
+							temp2 = terri.getId();
+							cout << temp1 << "/" << temp2 << endl;
+							if (sonoConfinanti(confiniTerritori, temp1, temp2)) { cout << "confinantee" << endl; };
 						}
 					}
 				}
@@ -225,3 +259,5 @@ bool sonoConfinanti(vector<pair<string, string>>& confiniTerritori, string a, st
 	}
 	return false;
 }
+
+
