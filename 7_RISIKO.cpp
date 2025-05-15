@@ -364,7 +364,181 @@ void initGiocatori(vector<Player>& giocatori)
 	system("cls");
 }
 
+int winner(Player& giocatore, vector<Territorio> territori)
+{
+	using namespace ranges;
+	string obbiettivo = giocatore.getObbiettivo();
 
+	if (obbiettivo == "Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "europa") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del sud") &&
+			(contains(getConquistaContinenti(giocatore, territori), "asia") ||
+				contains(getConquistaContinenti(giocatore, territori), "america del nord") ||
+				contains(getConquistaContinenti(giocatore, territori), "africa") ||
+				contains(getConquistaContinenti(giocatore, territori), "oceania"))
+			)
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’Asia e l’America del Sud.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "asia") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del sud"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’America del Nord e l’Africa.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "america del nord") &&
+			contains(getConquistaContinenti(giocatore, territori), "africa"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+
+	}
+	else if (obbiettivo == "Conquistare l’America del Nord e l’Oceania.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "america del nord") &&
+			contains(getConquistaContinenti(giocatore, territori), "oceania"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’Europa e l’Oceania.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "europa") &&
+			contains(getConquistaContinenti(giocatore, territori), "oceania"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’Asia e l’Africa.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "asia") &&
+			contains(getConquistaContinenti(giocatore, territori), "africa"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’America del Nord e l’America del Sud.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "america del nord") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del sud"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’Europa e l’America del Nord.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "europa") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del nord"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’America del Nord e l’America del Sud.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "america del nord") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del sud"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare l’Europa e l’America del Nord.")
+	{
+		if (contains(getConquistaContinenti(giocatore, territori), "europa") &&
+			contains(getConquistaContinenti(giocatore, territori), "america del nord"))
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
+	{
+
+	}
+	else if (obbiettivo == "Conquistare 24 territori a tua scelta.")
+	{
+		if (getNumTerritori(giocatore, territori) >= 24)
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	else if (obbiettivo == "Conquistare 18 territori con almeno due armate ciascuno.")
+	{
+
+	}
+	else
+	{
+		return -1;
+	}
+}
 
 
 
