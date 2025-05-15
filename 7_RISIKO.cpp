@@ -1,6 +1,7 @@
 #include <iostream>
 #include <SFML/Graphics.hpp>
 #include <string>
+#include <ranges>
 #include "Territorio.h"
 #include "Player.h"
 
@@ -9,11 +10,13 @@ using namespace sf;
 
 bool sonoConfinanti(vector<pair<string, string>>&, string, string);
 void initGiocatori(vector<Player>&);
-int winner(Player& giocatore); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
+int winner(Player&, vector<Territorio>); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
+vector<string> getConquistaContinenti(Player&, vector<Territorio>);
+int getNumTerritori(Player&, vector<Territorio>);
 
 int main()
 {
-	Territorio territori[42] = {
+	vector<Territorio> territori = {
 		// Territori del continente america del sud
 		Territorio("venezuela","america del sud", 3, Color(67,169,176,255)),
 		Territorio("peru", "america del sud", 3, Color(117,189,181,255)),
@@ -168,12 +171,12 @@ int main()
 		"Conquistare l’Asia e l’Africa.",
 		"Conquistare l’America del Nord e l’America del Sud.",
 		"Conquistare l’Europa e l’America del Nord.",
-		"Distruggere tutte le armate del giocatore di colore rosso. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
-		"Distruggere tutte le armate del giocatore di colore blu. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
-		"Distruggere tutte le armate del giocatore di colore giallo. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
-		"Distruggere tutte le armate del giocatore di colore verde. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
-		"Distruggere tutte le armate del giocatore di colore nero. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
-		"Distruggere tutte le armate del giocatore di colore viola. (Se il giocatore bersaglio viene eliminato da un altro, l’obiettivo si trasforma in \"conquistare 24 territori a tua scelta\")",
+		"Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
 		"Conquistare 24 territori a tua scelta.",
 		"Conquistare 18 territori con almeno due armate ciascuno."
 	};
@@ -260,6 +263,80 @@ bool sonoConfinanti(vector<pair<string, string>>& confiniTerritori, string a, st
 	return false;
 }
 
+vector<string> getConquistaContinenti(Player& giocatore, vector<Territorio> territori) {
+	int contEuropa = 7, contAmericaDelSud = 4, contAsia = 12, contAmericaDelNord = 9, contAfrica = 6, contOceania = 4; //conto territori mancanti alla conquista del continente
+	vector<string> continentiConquistati;
+
+	for (Territorio terri : territori)
+	{
+		if (terri.getIdGiocatore() == giocatore.getIdGiocatore())
+		{
+			if (terri.getIdContinente() == "europa")
+			{
+				contEuropa--;
+				if (contEuropa == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+			else if (terri.getIdContinente() == "america del sud")
+			{
+				contAmericaDelSud--;
+				if (contAmericaDelSud == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+			else if (terri.getIdContinente() == "asia")
+			{
+				contAsia--;
+				if (contAsia == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+			else if (terri.getIdContinente() == "america del nord")
+			{
+				contAmericaDelNord--;
+				if (contAmericaDelNord == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+			else if (terri.getIdContinente() == "africa")
+			{
+				contAfrica--;
+				if (contAfrica == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+			else if (terri.getIdContinente() == "oceania")
+			{
+				contOceania--;
+				if (contOceania == 0)
+				{
+					continentiConquistati.push_back(terri.getIdContinente());
+				}
+			}
+		}
+	}
+	return continentiConquistati;
+}
+
+int getNumTerritori(Player& giocatore, vector<Territorio> territori) {
+	int nTerri = 0; //conto territori conquistati 
+
+	for (Territorio terri : territori)
+	{
+		if (terri.getIdGiocatore() == giocatore.getIdGiocatore())
+		{
+			nTerri++;
+		}
+	}
+	return nTerri;
+}
+
 void initGiocatori(vector<Player>& giocatori)
 {
 	int numGiocatori;
@@ -282,40 +359,12 @@ void initGiocatori(vector<Player>& giocatori)
 	{
 		cout << "inserire il nome del giocatore " << i + 1 << endl;
 		getline(cin, nomeGiocatore);
-		giocatori.push_back(Player(nomeGiocatore, armateIniziali));
+		giocatori.push_back(Player(nomeGiocatore, i, armateIniziali)); //idGiocatore corrisponde anche alla posizione nell'array giocatori
 	}
 	system("cls");
 }
 
-int winner(Player& giocatore)
-{
-	return -1;
-	string obbiettivo = giocatore.getObbiettivo();
-	if (obbiettivo == "Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.")
-	{
 
-	}
-	else if (obbiettivo == "Conquistare l’Asia e l’America del Sud.")
-	{
-
-	}
-	else if (obbiettivo == "Conquistare l’America del Nord e l’Africa.")
-	{
-
-	}
-	else if (obbiettivo == "Conquistare 24 territori a tua scelta.")
-	{
-
-	}
-	else if (obbiettivo == "Conquistare 18 territori con almeno due armate ciascuno.")
-	{
-
-	}
-	else
-	{
-		//return -1;
-	}
-}
 
 
 
