@@ -2,19 +2,39 @@
 #include <SFML/Graphics.hpp>
 #include <string>
 #include <ranges>
+#include <algorithm> // per shuffle
+#include <random>    // per default_random_engine
+#include <chrono>    // per seed del random engine
+
+#include <windows.h>
+#include <sal.h> // Include SAL annotations header
+
+#include "imgui.h"
+#include "imgui-SFML.h"
+
 #include "Territorio.h"
 #include "Player.h"
+
 
 using namespace std;
 using namespace sf;
 
+//TO DO LIST
+
+/*
+	1. controllare prototipi funzioni + coincidenza con dichiarazioni
+	2. forse creare classe logic per suddividere le funzioni in modo piu' ordinato --> non urgente
+	3. ristrutturare initGiocatori con input gestito da finestra ImGui
+	4. creare un layout di visualizzazione della mappa e delle finestre varie (input, informazioni, ecc.)
+*/
+
 bool sonoConfinanti(vector<pair<string, string>>&, string, string);
 void initGiocatori(vector<Player>&);
-int winner(Player&, vector<Territorio>); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
+int winner(Player&, vector<Player>&, vector<Territorio>); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
 vector<string> getConquistaContinenti(Player&, vector<Territorio>);
-int getNumTerritori(Player&, vector<Territorio>);
+int getNumTerritori(Player&, vector<Territorio>, int);
 
-int main()
+int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	vector<Territorio> territori = {
 		// Territori del continente america del sud
@@ -162,28 +182,11 @@ int main()
 		{"ucraina","afghanistan"},
 		{"ucraina","urali"}
 	};
-	string obbiettivi[16] = {
-		"Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.",
-		"Conquistare l’Asia e l’America del Sud.",
-		"Conquistare l’America del Nord e l’Africa.",
-		"Conquistare l’America del Nord e l’Oceania.",
-		"Conquistare l’Europa e l’Oceania.",
-		"Conquistare l’Asia e l’Africa.",
-		"Conquistare l’America del Nord e l’America del Sud.",
-		"Conquistare l’Europa e l’America del Nord.",
-		"Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Conquistare 24 territori a tua scelta.",
-		"Conquistare 18 territori con almeno due armate ciascuno."
-	};
 	Texture mappa_originale;
 	Image mappa_modificata;
 	Color temp;
 	vector<Player> giocatori;
+	string territorioSelezionato;
 
 	try {
 		if (!mappa_originale.loadFromFile("mappa_originale.png")) {
@@ -198,19 +201,29 @@ int main()
 		cerr << e.what() << endl;
 		return -1;
 	}
-	initGiocatori(giocatori);
+
+	//!initGiocatori(giocatori);
 
 	// Crea lo sprite della mappa originale
 	Sprite sprite_mappa_originale(mappa_originale);
 	// Crea la finestra
 	RenderWindow map_window(VideoMode({ mappa_originale.getSize().x, mappa_originale.getSize().y }), "RISIKO", Style::Titlebar | Style::Resize | Style::Close);
+	map_window.setPosition({ 0, 0 });
+	float fattoreRiduzione = 1.6f; // Imposta la dimensione della finestra iniziale riducendola di un fattoreRiduzione
+	map_window.setSize({ (unsigned int)((double)mappa_modificata.getSize().x / fattoreRiduzione), (unsigned int)((double)mappa_modificata.getSize().y / fattoreRiduzione) });
+	if (!ImGui::SFML::Init(map_window)) {
+		cerr << "Errore durante l'inizializzazione di ImGui::SFML" << endl;
+		return -1;
+	}
+	Clock deltaClock;
 
-	string temp1 = " ", temp2;
+	// Start a new thread for the logic and input handling
 
 	while (map_window.isOpen())
 	{
-		while (const optional event = map_window.pollEvent())
+		while (const auto event = map_window.pollEvent())
 		{
+			ImGui::SFML::ProcessEvent(map_window, *event);
 			// Close window: exit
 			if (event->is<Event::Closed>()) {
 				map_window.close();
@@ -222,6 +235,9 @@ int main()
 				map_window.setSize({ (unsigned int)map_window.getSize().x, (unsigned int)(mappa_modificata.getSize().y * map_window.getSize().x / (double)mappa_modificata.getSize().x) });
 			}
 
+			//!sf::Vector2i mousePos = sf::Mouse::getPosition(map_window); // relative to window
+
+			/*
 			if (event->is<Event::MouseButtonPressed>()) {
 				if (Mouse::isButtonPressed(Mouse::Button::Left))
 				{
@@ -230,15 +246,33 @@ int main()
 					for (Territorio terri : territori) {
 						if (temp == terri.getColore()) {
 							//cout << "Territorio: " + territorio.getId() + " - Giocatore: " + to_string(territorio.getIdGiocatore()) + " - Armate: " + to_string(territorio.getNumArmate()) << endl;
-							temp1 = temp2;
-							temp2 = terri.getId();
-							cout << temp1 << "/" << temp2 << endl;
-							if (sonoConfinanti(confiniTerritori, temp1, temp2)) { cout << "confinantee" << endl; };
+							territorioSelezionato = terri.getId();
+							//if (sonoConfinanti(confiniTerritori, temp1, temp2)) { cout << "confinante" << endl; };
 						}
 					}
 				}
 			}
+			*/
 		}
+
+		ImGui::SFML::Update(map_window, deltaClock.restart());
+
+		ImGui::Begin("ImGui window"); // Create a window
+		ImGui::Text("Territorio selezionato: %s", territorioSelezionato.c_str()); // Display the selected territory
+		ImGui::End(); // End the window
+
+		/*
+		for (int i = 0; i < giocatori.size(); i++) {
+			ImGui::Begin(("Giocatore " + std::to_string(i + 1)).c_str());
+
+			ImGui::Text(("Nome: " + giocatori[i].getName()).c_str());
+			ImGui::Text(("Colore: " + giocatori[i].getColore()).c_str());
+			ImGui::Text(("Numero Armate: " + std::to_string(giocatori[i].getNumArmate())).c_str());
+			ImGui::Text(("Obiettivo: " + giocatori[i].getObbiettivo()).c_str());
+
+			ImGui::End();
+		}
+		*/
 
 		// Clear screen
 		map_window.clear();
@@ -246,11 +280,13 @@ int main()
 		// Draw the sprite
 		map_window.draw(sprite_mappa_originale);
 
+		ImGui::SFML::Render(map_window); // Render ImGui
 		// Update the window
 		map_window.display();
 	}
 
-
+	ImGui::SFML::Shutdown();
+	return 0;
 }
 
 bool sonoConfinanti(vector<pair<string, string>>& confiniTerritori, string a, string b) {
@@ -324,12 +360,12 @@ vector<string> getConquistaContinenti(Player& giocatore, vector<Territorio> terr
 	return continentiConquistati;
 }
 
-int getNumTerritori(Player& giocatore, vector<Territorio> territori) {
+int getNumTerritori(Player& giocatore, vector<Territorio> territori, int nArmateMinime) {
 	int nTerri = 0; //conto territori conquistati 
 
 	for (Territorio terri : territori)
 	{
-		if (terri.getIdGiocatore() == giocatore.getIdGiocatore())
+		if (terri.getIdGiocatore() == giocatore.getIdGiocatore() && terri.getNumArmate() >= nArmateMinime)
 		{
 			nTerri++;
 		}
@@ -342,6 +378,30 @@ void initGiocatori(vector<Player>& giocatori)
 	int numGiocatori;
 	string nomeGiocatore;
 	int armateIniziali;
+	vector <string> coloriGiocatori = { "rosso", "blu", "giallo", "verde", "nero", "viola" };
+	vector <string> obbiettivi = {
+		"Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.",
+		"Conquistare l’Asia e l’America del Sud.",
+		"Conquistare l’America del Nord e l’Africa.",
+		"Conquistare l’America del Nord e l’Oceania.",
+		"Conquistare l’Europa e l’Oceania.",
+		"Conquistare l’Asia e l’Africa.",
+		"Conquistare l’America del Nord e l’America del Sud.",
+		"Conquistare l’Europa e l’America del Nord.",
+		"Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
+		"Conquistare 24 territori a tua scelta.",
+		"Conquistare 18 territori con almeno due armate ciascuno."
+	};
+	size_t seed = chrono::system_clock::now().time_since_epoch().count();
+	default_random_engine engine(static_cast<unsigned int>(seed));
+	shuffle(coloriGiocatori.begin(), coloriGiocatori.end(), engine);
+	shuffle(obbiettivi.begin(), obbiettivi.end(), engine);
+
 	do
 	{
 		cout << "inserire il numero di giocatori" << endl;
@@ -359,12 +419,34 @@ void initGiocatori(vector<Player>& giocatori)
 	{
 		cout << "inserire il nome del giocatore " << i + 1 << endl;
 		getline(cin, nomeGiocatore);
-		giocatori.push_back(Player(nomeGiocatore, i, armateIniziali)); //idGiocatore corrisponde anche alla posizione nell'array giocatori
+		giocatori.push_back(Player(nomeGiocatore, i, armateIniziali, coloriGiocatori[i], obbiettivi[i])); //idGiocatore corrisponde anche alla posizione nell'array giocatori
 	}
 	system("cls");
 }
 
-int winner(Player& giocatore, vector<Territorio> territori)
+int checkObbiettivoColore(Player& giocatore, string colore, vector<Player>& giocatori, vector<Territorio> territori) {
+	int idTarget = -1;
+	for (Player& g : giocatori) {
+		if (g.getColore() == colore) {
+			idTarget = g.getIdGiocatore();
+			break;
+		}
+	}
+	if (idTarget != -1) {
+		if (giocatori[idTarget].getIdGiocatore() != giocatore.getIdGiocatore() && giocatori[idTarget].getIdAbbattitore() == giocatore.getIdGiocatore()) {
+			return -1;
+		}
+		else {
+			giocatore.setObbiettivo("Conquistare 24 territori a tua scelta.");
+			return winner(giocatore, giocatori, territori);
+		}
+	}
+	else {
+		return -1;
+	}
+}
+
+int winner(Player& giocatore, vector<Player>& giocatori, vector<Territorio> territori)
 {
 	using namespace ranges;
 	string obbiettivo = giocatore.getObbiettivo();
@@ -497,31 +579,31 @@ int winner(Player& giocatore, vector<Territorio> territori)
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "rosso", giocatori, territori);
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "blu", giocatori, territori);
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "giallo", giocatori, territori);
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "verde", giocatori, territori);
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "nero", giocatori, territori);
 	}
 	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
 	{
-
+		return checkObbiettivoColore(giocatore, "viola", giocatori, territori);
 	}
 	else if (obbiettivo == "Conquistare 24 territori a tua scelta.")
 	{
-		if (getNumTerritori(giocatore, territori) >= 24)
+		if (getNumTerritori(giocatore, territori, 1) >= 24)
 		{
 			return giocatore.getIdGiocatore();
 		}
@@ -532,7 +614,14 @@ int winner(Player& giocatore, vector<Territorio> territori)
 	}
 	else if (obbiettivo == "Conquistare 18 territori con almeno due armate ciascuno.")
 	{
-
+		if (getNumTerritori(giocatore, territori, 2) >= 18)
+		{
+			return giocatore.getIdGiocatore();
+		}
+		else
+		{
+			return -1;
+		}
 	}
 	else
 	{

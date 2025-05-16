@@ -1,12 +1,16 @@
 #include "Player.h"
 
-Player::Player(string name, int idGiocatore, int numArmate) : name(name), idGiocatore(idGiocatore), numArmate(numArmate), carte{ 0, 0, 0, 0 } {}
+Player::Player(string name, int idGiocatore, int numArmate, string colore, string obbiettivo) : name(name), idGiocatore(idGiocatore), numArmate(numArmate), colore(colore), obbiettivo(obbiettivo), carte{ 0, 0, 0, 0 }, idAbbattitore(-1) {}
 
 string Player::getName() { return name; }
 
 int Player::getNumArmate() { return numArmate; }
 
 void Player::setNumArmate(int numArmate) { numArmate = numArmate; }
+
+void Player::setIdAbbattitore(int idAbbattitore) { idAbbattitore = idAbbattitore; }
+
+void Player::setObbiettivo(string obbiettivo) { obbiettivo = obbiettivo; }
 
 void Player::addCarta() {}
 
@@ -30,4 +34,14 @@ array<int, 4> Player::getCarte()
 string Player::getObbiettivo()
 {
 	return obbiettivo;
+}
+
+string Player::getColore()
+{
+	return colore;
+}
+
+int Player::getIdAbbattitore()
+{
+	return idAbbattitore;
 }
