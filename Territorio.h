@@ -11,19 +11,21 @@ private:
 	string id;
 	string idContinente;
 	int puntiControllo;
-	Color colore;
-	// -1 = nessun giocatore, 0 = giocatore 1, 1 = giocatore 2, ecc.
-	int idGiocatore;
 	int numArmate;
+	int idConquistatore; // id del giocatore che controlla il territorio
+	Vector2f posizione;
+	Color colore;
 public:
-	Territorio(string id, string idContinente, int puntiControllo, Color colore);
+	Territorio(string, string, int, Color, Vector2f);
 	string getId();
 	string getIdContinente();
-	int getIdGiocatore();
 	int getNumArmate();
 	int getPuntiControllo();
 	Color getColore();
-	void setNumArmate(int numArmate);
-	void setIdGiocatore(int idGiocatore);
+	void setNumArmate(int);
+	bool offsNumArmate(int);
+	void setIdConquistatore(int);
+	int getIdConquistatore();
+	Vector2f getPosizione();
 };
 

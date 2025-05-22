@@ -85,5 +85,16 @@
     <Image Include="mappa_modificata.png">
       <Filter>File di risorse</Filter>
     </Image>
+    <Image Include="tank.png">
+      <Filter>File di risorse</Filter>
+    </Image>
+    <Image Include="duck.png">
+      <Filter>File di risorse</Filter>
+    </Image>
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="arial.ttf">
+      <Filter>File di risorse</Filter>
+    </Font>
   </ItemGroup>
 </Project>

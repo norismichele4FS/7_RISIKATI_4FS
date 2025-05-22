@@ -159,8 +159,13 @@
     <ClInclude Include="Territorio.h" />
   </ItemGroup>
   <ItemGroup>
+    <Image Include="duck.png" />
     <Image Include="mappa_modificata.png" />
     <Image Include="mappa_originale.png" />
+    <Image Include="tank.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <Font Include="arial.ttf" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

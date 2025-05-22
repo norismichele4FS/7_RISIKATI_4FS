@@ -6,13 +6,27 @@ string Player::getName() { return name; }
 
 int Player::getNumArmate() { return numArmate; }
 
-void Player::setNumArmate(int numArmate) { numArmate = numArmate; }
+bool Player::replaceNumArmate(int num, Territorio& territorio) {
+	if (numArmate - num >= 0)
+	{
+		numArmate = numArmate + num;
+		if (territorio.offsNumArmate(num)) {
+			return true;
+		}
+		else {
+			return false;
+		} //aggiungo o tolgo le armate al territorio
+	}
+	else { return false; }
+}
 
-void Player::setIdAbbattitore(int idAbbattitore) { idAbbattitore = idAbbattitore; }
+void Player::setIdAbbattitore(int idAbbattitore) { this->idAbbattitore = idAbbattitore; }
 
-void Player::setObbiettivo(string obbiettivo) { obbiettivo = obbiettivo; }
+void Player::setObbiettivo(string obbiettivo) { this->obbiettivo = obbiettivo; }
 
-void Player::addCarta() {}
+void Player::addCarta() {
+
+}
 
 void Player::removeCarte(int nCav, int nCan, int nFan, int nJol) {
 	carte.at(0) -= nCav;
@@ -44,4 +58,38 @@ string Player::getColore()
 int Player::getIdAbbattitore()
 {
 	return idAbbattitore;
+}
+
+vector<Territorio> Player::getTerritori()
+{
+	return inventarioTerritori;
+}
+
+void Player::addTerritorio(Territorio& territorio)
+{
+	bool found = false;
+	for (int i = 0; i < inventarioTerritori.size(); i++)
+	{
+		if (inventarioTerritori[i].getId() == territorio.getId())
+		{
+			found = true;
+			break;
+		}
+	}
+	if (!found) {
+		inventarioTerritori.push_back(territorio); territorio.setIdConquistatore(idGiocatore);
+	}
+}
+
+void Player::removeTerritorio(Territorio& territorio)
+{
+	for (int i = 0; i < inventarioTerritori.size(); i++)
+	{
+		if (inventarioTerritori.at(i).getId() == territorio.getId())
+		{
+			inventarioTerritori.erase(inventarioTerritori.begin() + i);
+			territorio.setIdConquistatore(-1);
+			break;
+		}
+	}
 }
