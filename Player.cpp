@@ -1,21 +1,22 @@
 #include "Player.h"
 
-Player::Player(string name, int idGiocatore, int numArmate, string colore, string obbiettivo) : name(name), idGiocatore(idGiocatore), numArmate(numArmate), colore(colore), obbiettivo(obbiettivo), carte{ 0, 0, 0, 0 }, idAbbattitore(-1) {}
+Player::Player(string name, int idGiocatore, int numArmate, string colore, string obbiettivo) : name(name), idGiocatore(idGiocatore), numArmate(numArmate), colore(colore), obbiettivo(obbiettivo), carte{ 0, 0, 0, 0 }, idAbbattitore(-1), faseGioco(0) {}
 
 string Player::getName() { return name; }
 
 int Player::getNumArmate() { return numArmate; }
 
-bool Player::replaceNumArmate(int num, Territorio& territorio) {
-	if (numArmate - num >= 0)
+bool Player::placeNumArmate(int num, Territorio& territorio) {
+
+	if (numArmate - num >= 0 && num >= 0)
 	{
-		numArmate = numArmate + num;
+		numArmate = numArmate - num;
 		if (territorio.offsNumArmate(num)) {
 			return true;
 		}
 		else {
 			return false;
-		} //aggiungo o tolgo le armate al territorio
+		}
 	}
 	else { return false; }
 }
@@ -24,15 +25,30 @@ void Player::setIdAbbattitore(int idAbbattitore) { this->idAbbattitore = idAbbat
 
 void Player::setObbiettivo(string obbiettivo) { this->obbiettivo = obbiettivo; }
 
-void Player::addCarta() {
+void Player::addCarta(array<int, 4>& carteDisponibili) {
+	int temp; // Variabile temporanea per generare un numero casuale tra 0 e 3  
 
+	do {
+		temp = rand() % 4;
+	} while (carteDisponibili[temp] <= 0); // Aggiunta di un controllo per garantire che temp sia sempre valido  
+
+	if (temp >= 0 && temp < 4) {
+		carteDisponibili[temp] -= 1; // Decrementa il numero di carte disponibili  
+		carte[temp]++;
+	}
 }
 
-void Player::removeCarte(int nCav, int nCan, int nFan, int nJol) {
-	carte.at(0) -= nCav;
-	carte.at(1) -= nCan;
-	carte.at(2) -= nFan;
-	carte.at(3) -= nJol;
+bool Player::removeCarte(int nFan, int nCav, int nCan, int nJol) {
+	if (carte.at(0) >= nFan && carte.at(1) >= nCav && carte.at(2) >= nCan && carte.at(3) >= nJol) {
+		carte.at(0) -= nFan;
+		carte.at(1) -= nCav;
+		carte.at(2) -= nCan;
+		carte.at(3) -= nJol;
+		return true;
+	}
+	else {
+		return false;
+	}
 }
 
 int Player::getIdGiocatore()
@@ -59,6 +75,12 @@ int Player::getIdAbbattitore()
 {
 	return idAbbattitore;
 }
+
+void Player::offsNumArmate(int numArmate) { this->numArmate += numArmate; }
+
+void Player::setFaseGioco(int faseGioco) { this->faseGioco = faseGioco; }
+
+int Player::getFaseGioco() { return faseGioco; }
 
 vector<Territorio> Player::getTerritori()
 {

@@ -15,6 +15,7 @@
 
 #include "Territorio.h"
 #include "Player.h"
+#include "resource.h"
 
 
 using namespace std;
@@ -25,8 +26,6 @@ using namespace sf;
 /*
 	1. controllare prototipi funzioni + coincidenza con dichiarazioni
 	2. forse creare classe logic per suddividere le funzioni in modo piu' ordinato --> non urgente
-	3. creare modo per disporre carri armati
-	3. creare logica di attacco e difesa
 */
 
 bool sonoConfinanti(vector<pair<string, string>>&, string, string);
@@ -37,6 +36,9 @@ Vector2u getMousePos(RenderWindow&, Sprite&, Image&);
 bool isTerritorioAmico(vector<Territorio>, vector<Player>, int, int);
 void initGiocatori(vector<Player>&, default_random_engine);
 void initTerritori(vector<Player>&, vector<Territorio>&, int);
+bool Attacco(vector<Territorio>&, vector<Player>&, array<int, 4>&);
+bool Sposta(int, vector<Territorio>&);
+void calcoloArmate(Player& giocatore);
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
@@ -98,7 +100,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		Territorio("mongolia", "asia", 5, Color(75,140,64,255), {0.738180f , 0.343953f}),
 		Territorio("cita", "asia", 4, Color(145,173,61,255), {0.703890f , 0.261733f})
 	};
-	shuffle(territori.begin(), territori.end(), engine);
+	std::shuffle(territori.begin(), territori.end(), engine);
 	vector<pair<string, string>> confiniTerritori = {
 		// Territori del continente america del sud
 		{"venezuela", "peru"},
@@ -191,26 +193,33 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		{"ucraina","urali"}
 	};
 	vector<Player> giocatori;
+	array<int, 4> carteDisponibili = { 14, 14, 14, 2 }; //numero di carte per simbolo disponibili - 14 per i 3 simboli e 2 per il jolly (fan, cav, can, jol)
+	int territorioSelezionato = -1;
+	int numArmateSpostamento = 1;
+	static const char* items[]{ "Fante","Cavallo","Cannone", "Jolly" };
+	static int selectedItem[3] = { 0, 0, 0 };
+	int sommaCarte[4] = { 0, 0, 0, 0 }; // per il calcolo delle carte da utilizzare per lo schieramento
 
+	Font font("arial.ttf");
 	Image mappa_modificata;
 	Texture mappa_originale;
 	Texture tankTexture;
 	if (!mappa_originale.loadFromFile("mappa_originale.png")) {}
 	if (!mappa_modificata.loadFromFile("mappa_modificata.png")) {}
-	if (!tankTexture.loadFromFile("duck.png")) {}
+	if (!tankTexture.loadFromFile("tank.png")) {}
 	Sprite sprite_mappa_originale(mappa_originale);
-	Sprite sprite_tank(tankTexture);
 
-	int territorioSelezionato = -1;
-	string windowOutput = "";
-	string windowTerritorioAmico = "nessuno";
-	string windowTerritorioNemico = "nessuno";
+	vector<Sprite> sprite_tanks;
+	for (int i = 0; i < territori.size(); i++) {
+		sprite_tanks.push_back(Sprite(tankTexture));
+	}
 
 	Color temp;
 
 	initGiocatori(giocatori, engine);
 	int turnoGiocatore = rand() % giocatori.size();
 	initTerritori(giocatori, territori, turnoGiocatore);
+	int turnoIniziale = turnoGiocatore; // Salva il turno iniziale per il reset del turno
 
 
 	// Crea lo sprite della mappa originale
@@ -244,17 +253,17 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	);
 
 	ImVec2 inputPanelSize = ImVec2(
-		map_window.getSize().x / 3.0f,
+		(map_window.getSize().x - playerPanelSize.x) / 2.0f,
 		map_window.getSize().y * imageWindowsRatio
 	);
 
 	ImVec2 outputPanelSize = ImVec2(
-		map_window.getSize().x / 3.0f,
+		(map_window.getSize().x - playerPanelSize.x) / 2.0f,
 		map_window.getSize().y * imageWindowsRatio
 	);
 
 	ImVec2 infoPanelSize = ImVec2(
-		map_window.getSize().x / 3.0f,
+		playerPanelSize.x,
 		map_window.getSize().y * imageWindowsRatio
 	);
 
@@ -295,17 +304,17 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 				);
 
 				inputPanelSize = ImVec2(
-					map_window.getSize().x / 3.0f,
+					(map_window.getSize().x - playerPanelSize.x) / 2.0f,
 					map_window.getSize().y * imageWindowsRatio
 				);
 
 				outputPanelSize = ImVec2(
-					map_window.getSize().x / 3.0f,
+					(map_window.getSize().x - playerPanelSize.x) / 2.0f,
 					map_window.getSize().y * imageWindowsRatio
 				);
 
 				infoPanelSize = ImVec2(
-					map_window.getSize().x / 3.0f,
+					playerPanelSize.x,
 					map_window.getSize().y * imageWindowsRatio
 				);
 
@@ -318,7 +327,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			}
 
 			if (event->is<Event::MouseButtonPressed>()) {
-				if (Mouse::isButtonPressed(Mouse::Button::Right))
+				if (Mouse::isButtonPressed(Mouse::Button::Left))
 				{
 
 					//funzione di calcolo delle coordinate per modificare posizione carri armati nel vettore territori
@@ -335,104 +344,279 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 		}
 
+
+		///creazione game loop a fasi di gioco per giocatore
+
+		if (winner(giocatori[turnoGiocatore], giocatori, territori) == -1) {
+			switch (giocatori[turnoGiocatore].getFaseGioco()) {
+
+			case 0:
+				windowOutputMessage = "Schierare tutte le armate iniziali";
+				if (giocatori[turnoGiocatore].getNumArmate() == 0) {
+					if (turnoGiocatore < giocatori.size() - 1) {
+						turnoGiocatore++;
+					}
+					else {
+						turnoGiocatore = 0;
+					};
+					if (turnoGiocatore == turnoIniziale) {
+						for (int i = 0; i < giocatori.size(); i++) {
+							giocatori[i].setFaseGioco(2); // tutti alla fase di attacco o spostamento
+						}
+						resetOutput();
+					}
+				}
+				break;
+
+			case 1: // schieramento
+
+				windowOutputMessage = "Utilizzare combo carte e poi schierare tutte le armate";
+				if (onetime) {
+					statusAttacco_Spostamento = false;
+					statusSchieramento = true;
+					statusCarte = true;
+					calcoloArmate(giocatori[turnoGiocatore]);
+					onetime = false;
+				}
+
+				if (giocatori[turnoGiocatore].getNumArmate() == 0) {
+					giocatori[turnoGiocatore].setFaseGioco(2); // passa alla fase di attacco o spostamento
+					onetime = true;
+					resetOutput();
+				}
+
+				break;
+
+			case 2: // attacco o spostamento
+				windowOutputMessage = "Attacca o esegui max 1 spostamento";
+				if (onetime) {
+					statusAttacco_Spostamento = true;
+					statusSchieramento = false;
+					statusCarte = false;
+					onetime = false;
+				}
+				break;
+
+			case 3: // fine turno
+
+				giocatori[turnoGiocatore].setFaseGioco(1); // torna alla fase di schieramento
+				if (turnoGiocatore < giocatori.size() - 1) {
+					turnoGiocatore++;
+				}
+				else {
+					turnoGiocatore = 0;
+				};
+				resetOutput();
+				resetTurno();
+				onetime = true;
+				break;
+			}
+		}
+		else {
+			statusAttacco_Spostamento = false;
+			statusCarte = false;
+			statusSchieramento = false;
+			windowOutputMessage = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
+			windowOutputError = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
+			windowOutputDadiA = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
+			windowOutputDadiD = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
+		}
+
+
+		// set output territori selezionati
+		if (territorioSelezionato != -1) {
+
+			if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
+				if (territori[territorioSelezionato].getId() != windowTerritorioAmico1) {
+					windowTerritorioAmico2 = windowTerritorioAmico1;
+					windowTerritorioAmico1 = territori[territorioSelezionato].getId();
+				}
+			}
+			else {
+				windowTerritorioNemico = territori[territorioSelezionato].getId();
+			}
+		}
+
 		ImGui::SFML::Update(map_window, deltaClock.restart());
+
+		//------------------------------------------------------------------------------------------------------------------------------------------
 
 		// Finestra giocatori (lato destro)
 		ImGui::SetNextWindowPos(ImVec2(map_window.getSize().x - playerPanelSize.x, 0));
 		ImGui::SetNextWindowSize(playerPanelSize);
 		ImGui::Begin("Giocatori", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 		for (int i = 0; i < giocatori.size(); i++) {
-			ImGui::Separator();
-			ImGui::TextWrapped("Giocatore numero %d", i + 1);
+			if (i != 0) {
+				ImGui::Separator();
+				ImGui::NewLine();
+			}
 			ImGui::TextWrapped("Nome: %s", giocatori[i].getName().c_str());
 			ImGui::TextWrapped("Id giocatore: %s", to_string(giocatori[i].getIdGiocatore()).c_str());
-			ImGui::TextWrapped("Id abbattitore: %s", to_string(giocatori[i].getIdAbbattitore()).c_str());
 			ImGui::TextWrapped("Colore: %s", giocatori[i].getColore().c_str());
-			ImGui::TextWrapped("Numero Armate da schierare: %d", giocatori[i].getNumArmate());
+			ImGui::TextWrapped("Fanti: %s", to_string(giocatori[i].getCarte()[0]).c_str());
+			ImGui::TextWrapped("Cavalli: %s", to_string(giocatori[i].getCarte()[1]).c_str());
+			ImGui::TextWrapped("Cannoni: %s", to_string(giocatori[i].getCarte()[2]).c_str());
+			ImGui::TextWrapped("Jolly: %s", to_string(giocatori[i].getCarte()[3]).c_str());
 			ImGui::TextWrapped("Obiettivo: %s", giocatori[i].getObbiettivo().c_str());
-			for (int j = 0; j < giocatori[i].getTerritori().size(); j++) {
-				ImGui::TextWrapped("Territorio %d: %s", j + 1, giocatori[i].getTerritori()[j].getId().c_str());
-			}
 		}
 		ImGui::End();
 
+		//------------------------------------------------------------------------------------------------------------------------------------------
 
 		// Finestra output (basso a sinistra)
 		ImGui::SetNextWindowPos(ImVec2(0, map_window.getSize().y - inputPanelSize.y), ImGuiCond_Always);
 		ImGui::SetNextWindowSize(outputPanelSize, ImGuiCond_Always);
 		ImGui::Begin("Output", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
+		ImGui::TextWrapped("Output: %s", windowOutputMessage.c_str());
 		ImGui::Separator();
-
-
-		// To fix the error, create a writable buffer to hold the string content of `windowOutput`  
-		// and pass it to `ImGui::InputTextMultiline`.  
-		std::vector<char> writableBuffer(windowOutput.begin(), windowOutput.end());
-		writableBuffer.push_back('\0'); // Ensure null-termination  
-		ImGui::InputTextMultiline("##hidden_label", writableBuffer.data(), writableBuffer.size(), ImVec2(0, 0), ImGuiInputTextFlags_ReadOnly);
-		//ImGui::TextWrapped(windowOutput.c_str());
-
-
+		ImGui::TextWrapped("Errori: %s", windowOutputError.c_str());
 		ImGui::Separator();
-		ImGui::TextWrapped("Turno di %s", giocatori[turnoGiocatore].getName().c_str());
+		ImGui::TextWrapped("Dadi attaccante: %s", windowOutputDadiA.c_str());
+		ImGui::TextWrapped("Dadi difensore: %s", windowOutputDadiD.c_str());
+		ImGui::Separator();
+		ImGui::TextWrapped(("Turno di: " + giocatori[turnoGiocatore].getName() + " -> (" + giocatori[turnoGiocatore].getColore() + ")").c_str());
 		ImGui::Separator();
 		ImGui::End();
 
+		//------------------------------------------------------------------------------------------------------------------------------------------
+
 		// Finestra input (basso a destra)
-		ImGui::SetNextWindowPos(ImVec2(map_window.getSize().x / 3.0f, map_window.getSize().y - inputPanelSize.y), ImGuiCond_Always);
+		ImGui::SetNextWindowPos(ImVec2((map_window.getSize().x - playerPanelSize.x) / 2.0f, map_window.getSize().y - inputPanelSize.y), ImGuiCond_Always);
 		ImGui::SetNextWindowSize(inputPanelSize, ImGuiCond_Always);
 		ImGui::Begin("Scheda di input e comandi", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 
-		if (territorioSelezionato != -1) {
-
-			if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
-				windowTerritorioAmico = territori[territorioSelezionato].getId();
-			}
-			else {
-				windowTerritorioNemico = territori[territorioSelezionato].getId();
-			}
-
+		if (statusAttacco_Spostamento) {
 			if (ImGui::Button("Attacco")) {
-				// Attacco action
+				resetOutput();
+				if (windowTerritorioAmico1 != "nessuno" && windowTerritorioNemico != "nessuno") {
+					if (sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioNemico)) {
+						if (Attacco(territori, giocatori, carteDisponibili)) {
+							windowOutputMessage = "Attacco riuscito!";
+						}
+						else {
+							windowOutputMessage = "Attacco fallito!";
+						}
+					}
+					else {
+						windowOutputError = "territori non confinanti!!!";
+					}
+				}
+				else {
+					windowOutputError = "territori selezionati insufficienti!!!";
+				}
 			}
 			ImGui::SameLine();
+			ImGui::TextWrapped((windowTerritorioAmico1 + "  --> ").c_str());
+			ImGui::SameLine();
+			ImGui::TextWrapped(windowTerritorioNemico.c_str());
+			ImGui::Separator();
+		}
+
+		if (statusCarte) {
+
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::Combo("Carta 1", &selectedItem[0], items, IM_ARRAYSIZE(items));
+			ImGui::SameLine();
+
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::Combo("Carta 2", &selectedItem[1], items, IM_ARRAYSIZE(items));
+			ImGui::SameLine();
+
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::Combo("Carta 3", &selectedItem[2], items, IM_ARRAYSIZE(items));
+
+
+			for (int i = 0; i < giocatori[turnoGiocatore].getCarte().size(); i++) {
+				sommaCarte[i] = 0; // Inizializza il conteggio delle carte
+			}
+
+			for (int i = 0; i < giocatori[turnoGiocatore].getCarte().size(); i++) {
+				sommaCarte[selectedItem[i]]++; // Inizializza il conteggio delle carte
+			}
+
+			if (ImGui::Button("Schiera combo")) {
+				resetOutput();
+				if (giocatori[turnoGiocatore].removeCarte(sommaCarte[0], sommaCarte[1], sommaCarte[2], sommaCarte[3])) {
+					if (sommaCarte[2] == 3) {
+						giocatori[turnoGiocatore].offsNumArmate(4);
+					}
+					else if (sommaCarte[0] == 3) {
+						giocatori[turnoGiocatore].offsNumArmate(6);
+					}
+					else if (sommaCarte[1] == 3) {
+						giocatori[turnoGiocatore].offsNumArmate(8);
+					}
+					else if (sommaCarte[0] == 1 && sommaCarte[1] == 1 && sommaCarte[2] == 1) {
+						giocatori[turnoGiocatore].offsNumArmate(10);
+					}
+					else if (sommaCarte[3] == 1 && (sommaCarte[0] == 2 || sommaCarte[1] == 2 || sommaCarte[2] == 2)) {
+						giocatori[turnoGiocatore].offsNumArmate(12);
+					}
+				}
+				else {
+					windowOutputError = "Non hai abbastanza carte per schierare questa combo!!!";
+				}
+			}
+			ImGui::Separator();
+
+		}
+
+		if (statusSchieramento) {
 			if (ImGui::Button("+")) {
+				resetOutput();
 				//problema durante altri turni possono modificare armate di altri giocatori
 				if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
-					if (!giocatori[turnoGiocatore].replaceNumArmate(1, territori[territorioSelezionato])) { ImGui::TextWrapped("Impossibile schierare ulteriori armate"); }
+					if (!giocatori[turnoGiocatore].placeNumArmate(1, territori[territorioSelezionato])) {
+						windowOutputError = "Impossibile schierare altre armate!!!";
+					}
 				}
 				else {
-					windowOutput = "Non puoi modificare le armate di un territorio nemico!";
+					windowOutputError = "Non puoi modificare le armate di un territorio nemico!!!";
 				}
 			}
 			ImGui::SameLine();
-			if (ImGui::Button("-")) {
-				if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
-					if (!giocatori[turnoGiocatore].replaceNumArmate(-1, territori[territorioSelezionato])) { ImGui::TextWrapped("Impossibile rimuovere ulteriori armate"); }
+			ImGui::TextWrapped(("Territori da schierare: " + to_string(giocatori[turnoGiocatore].getNumArmate())).c_str());
+			ImGui::Separator();
+		}
+
+		if (trasferimento && statusAttacco_Spostamento) {
+			ImGui::SetNextItemWidth(100.f);
+			ImGui::InputInt("(Inserisci un numero)  -- ", &numArmateSpostamento);
+			ImGui::SameLine();
+			if (ImGui::Button("Sposta")) {
+				resetOutput();
+				if (windowTerritorioAmico1 != "nessuno" && windowTerritorioAmico2 != "nessuno") {
+					if (windowTerritorioAmico1 != windowTerritorioAmico2) {
+						if (sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioAmico2)) {
+							Sposta(numArmateSpostamento, territori);
+						}
+						else {
+							windowOutputError = "territori non confinanti!!!";
+						}
+					}
+					else {
+						windowOutputError = "Territori selezionati identici!!!";
+					}
 				}
 				else {
-					windowOutput = "Non puoi modificare le armate di un territorio nemico!";
+					windowOutputError = "territori selezionati insufficienti!!!";
 				}
 			}
-		}
-		else {
-			ImGui::TextWrapped("Nessun territorio selezionato");
+			ImGui::TextWrapped((windowTerritorioAmico2 + "  --> ").c_str());
+			ImGui::SameLine();
+			ImGui::TextWrapped(windowTerritorioAmico1.c_str());
+			ImGui::Separator();
 		}
 
-		ImGui::SameLine();
 		if (ImGui::Button("passo turno")) {
-			if (turnoGiocatore < giocatori.size() - 1) {
-				turnoGiocatore++;
-			}
-			else {
-				turnoGiocatore = 0;
-			};
+			giocatori[turnoGiocatore].setFaseGioco(3);
 		}
 
-		ImGui::TextWrapped("Territorio amico selezionato = %s", windowTerritorioAmico.c_str());
-		ImGui::TextWrapped("Territorio nemico selezionato = %s", windowTerritorioNemico.c_str());
 		ImGui::End();
 
-		ImGui::SetNextWindowPos(ImVec2(map_window.getSize().x / 3.0f * 2.0f, map_window.getSize().y - inputPanelSize.y), ImGuiCond_Always);
+		//------------------------------------------------------------------------------------------------------------------------------------------
+
+		ImGui::SetNextWindowPos(ImVec2((map_window.getSize().x - playerPanelSize.x), map_window.getSize().y - inputPanelSize.y), ImGuiCond_Always);
 		ImGui::SetNextWindowSize(outputPanelSize, ImGuiCond_Always);
 		ImGui::Begin("Info varie", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 		if (territorioSelezionato != -1) {
@@ -443,71 +627,69 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			ImGui::Separator();
 			ImGui::TextWrapped(to_string(territori[territorioSelezionato].getPuntiControllo()).c_str());
 			ImGui::Separator();
-			ImGui::TextWrapped(to_string(territori[territorioSelezionato].getNumArmate()).c_str());
-			ImGui::Separator();
-			ImGui::TextWrapped(to_string(territori[territorioSelezionato].getIdConquistatore()).c_str());
-			ImGui::Separator();
 		}
 		else { ImGui::TextWrapped("Nessun territorio selezionato"); }
 		ImGui::End();
 
+		//------------------------------------------------------------------------------------------------------------------------------------------
+
+
 		map_window.clear();// Clear screen
-
-
 		map_window.setView(view);//importa la view per evitare deformazioni durante il resize della finestra
+		map_window.draw(sprite_mappa_originale);
+		ImGui::SFML::Render(map_window); // Render ImGui
 
-		map_window.draw(sprite_mappa_originale);// Draw the sprite
+		for (int i = 0; i < sprite_tanks.size(); i++) {
 
-		//map_window.setView(map_window.getDefaultView());
-		float mapWidth = map_window.getSize().x - playerPanelSize.x;
-		float mapHeight = map_window.getSize().y - inputPanelSize.y;
-
-		Font font("arial.ttf");
-		for (Territorio territory : territori) {
 			// Setta colore in base al giocatore
-			if (giocatori[territory.getIdConquistatore()].getColore() == "rosso") {
-				sprite_tank.setColor(Color(255, 0, 0, 255));
+			if (giocatori[territori[i].getIdConquistatore()].getColore() == "rosso") {
+				sprite_tanks[i].setColor(Color(255, 0, 0, 255));
 			}
-			else if (giocatori[territory.getIdConquistatore()].getColore() == "blu") {
-				sprite_tank.setColor(Color(0, 0, 255, 255));
+			else if (giocatori[territori[i].getIdConquistatore()].getColore() == "blu") {
+				sprite_tanks[i].setColor(Color(0, 0, 255, 255));
 			}
-			else if (giocatori[territory.getIdConquistatore()].getColore() == "giallo") {
-				sprite_tank.setColor(Color(255, 255, 0, 255));
+			else if (giocatori[territori[i].getIdConquistatore()].getColore() == "giallo") {
+				sprite_tanks[i].setColor(Color(255, 255, 0, 255));
 			}
-			else if (giocatori[territory.getIdConquistatore()].getColore() == "verde") {
-				sprite_tank.setColor(Color(0, 255, 0, 255));
+			else if (giocatori[territori[i].getIdConquistatore()].getColore() == "verde") {
+				sprite_tanks[i].setColor(Color(0, 255, 0, 255));
 			}
-			else if (giocatori[territory.getIdConquistatore()].getColore() == "nero") {
-				sprite_tank.setColor(Color(41, 49, 51, 255));
+			else if (giocatori[territori[i].getIdConquistatore()].getColore() == "nero") {
+				sprite_tanks[i].setColor(Color(41, 49, 51, 255));
 			}
-			else if (giocatori[territory.getIdConquistatore()].getColore() == "viola") {
-				sprite_tank.setColor(Color(128, 0, 128, 255));
+			else if (giocatori[territori[i].getIdConquistatore()].getColore() == "viola") {
+				sprite_tanks[i].setColor(Color(128, 0, 128, 255));
 			}
-			//sprite_tank.setScale({ 0.04f, 0.04f }); // scala se troppo grande
-			sprite_tank.setScale({ finalScale * 0.05f, finalScale * 0.05f });
-			sprite_tank.setPosition(
-				{ territory.getPosizione().x * sprite_mappa_originale.getGlobalBounds().size.x - (float)sprite_tank.getGlobalBounds().size.x / 2.f, territory.getPosizione().y * sprite_mappa_originale.getGlobalBounds().size.y - (float)sprite_tank.getGlobalBounds().size.y / 2.f }
+
+			// Imposta la scala dello sprite in base alla scala della mappa
+			sprite_tanks[i].setScale({ finalScale * 0.055f, finalScale * 0.055f });
+
+			// Imposta l'origine al centro dello sprite
+			sprite_tanks[i].setOrigin({ sprite_tanks[i].getLocalBounds().size.x / 2.f, sprite_tanks[i].getLocalBounds().size.y / 2.f });
+
+			// Imposta la posizione dello sprite in base alla grandezza della mappa
+			sprite_tanks[i].setPosition(
+				{ territori[i].getPosizione().x * sprite_mappa_originale.getGlobalBounds().size.x, territori[i].getPosizione().y * sprite_mappa_originale.getGlobalBounds().size.y }
 			);
-			map_window.draw(sprite_tank);
-			// Testo con numero armate
+
+			map_window.draw(sprite_tanks[i]);
+
+			// Conmfigura il testo delle armate sullo sprite del carro
 			Text armyText(font);
-			armyText.setString(std::to_string(territory.getNumArmate()));
+			armyText.setString(to_string(territori[i].getNumArmate()));
 			//armyText.setCharacterSize(15);
 			armyText.setScale({ finalScale * 0.7f,  finalScale * 0.7f });
-			armyText.setFillColor(sf::Color::White);
+			armyText.setFillColor(Color::White);
 			//armyText.setOutlineColor(sf::Color::Black);
 			armyText.setOutlineThickness(2);
+			armyText.setOrigin({ armyText.getLocalBounds().size.x / 2.f, armyText.getLocalBounds().size.y / 2.f });
 
 			// Centra il testo sopra il carro
-			armyText.setPosition({
-				sprite_tank.getPosition().x + sprite_tank.getGlobalBounds().size.x / 2.f - armyText.getGlobalBounds().size.x / 2.f ,
-				sprite_tank.getPosition().y + sprite_tank.getGlobalBounds().size.y / 2.f - armyText.getGlobalBounds().size.y / 2.f });
-
+			armyText.setPosition({ sprite_tanks[i].getPosition().x ,sprite_tanks[i].getPosition().y });
 
 			map_window.draw(armyText);
 		}
 
-		ImGui::SFML::Render(map_window); // Render ImGui
 		map_window.display();// Update the window
 	}
 
@@ -516,7 +698,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 }
 
 bool isTerritorioAmico(vector<Territorio> territori, vector<Player> giocatori, int territorioSelezionato, int turnoGiocatore) {
-	///poi usa il vettore perche' quando inizializzi il gioco il caso id = -1 non si presenta
 	return (territori[territorioSelezionato].getIdConquistatore() == giocatori[turnoGiocatore].getIdGiocatore());
 }
 
@@ -651,8 +832,8 @@ void initGiocatori(vector<Player>& giocatori, default_random_engine engine)
 		"Conquistare 24 territori a tua scelta.",
 		"Conquistare 18 territori con almeno due armate ciascuno."
 	};
-	shuffle(coloriGiocatori.begin(), coloriGiocatori.end(), engine);
-	shuffle(obbiettivi.begin(), obbiettivi.end(), engine);
+	std::shuffle(coloriGiocatori.begin(), coloriGiocatori.end(), engine);
+	std::shuffle(obbiettivi.begin(), obbiettivi.end(), engine);
 
 	do
 	{
@@ -896,7 +1077,7 @@ void initTerritori(vector<Player>& giocatori, vector<Territorio>& territori, int
 
 		if (territoriAssegnati < territori.size()) {
 			giocatori[i].addTerritorio(territori[territoriAssegnati]);
-			giocatori[i].replaceNumArmate(1, territori[territoriAssegnati]);
+			giocatori[i].placeNumArmate(1, territori[territoriAssegnati]);
 			territoriAssegnati++;
 		}
 		else {
@@ -912,3 +1093,162 @@ void initTerritori(vector<Player>& giocatori, vector<Territorio>& territori, int
 	}
 }
 
+bool Attacco(vector<Territorio>& territori, vector<Player>& giocatori, array<int, 4>& carteDisponibili) {
+
+	int attaccante = -1;
+	int difensore = -1;
+	int attaccantePlayer = -1;
+	int difensorePlayer = -1;
+
+	for (int i = 0; i < territori.size(); i++) {
+
+		if (territori[i].getId() == windowTerritorioAmico1)
+		{
+			attaccante = i;
+		}
+		else if (territori[i].getId() == windowTerritorioNemico)
+		{
+			difensore = i;
+		}
+	}
+
+	for (int i = 0; i < giocatori.size(); i++) {
+
+		if (giocatori[i].getIdGiocatore() == territori[attaccante].getIdConquistatore())
+		{
+			attaccantePlayer = i;
+		}
+		else if (giocatori[i].getIdGiocatore() == territori[difensore].getIdConquistatore())
+		{
+			difensorePlayer = i;
+		}
+	}
+
+	if (territori[attaccante].getNumArmate() <= 1) {
+		windowOutputError = "Non hai abbastanza truppe per attaccare!!!";
+		return false;
+	}
+
+	// Numero dadi
+	int dadiAttacco = min(3, territori[attaccante].getNumArmate() - 1);
+	int dadiDifesa = min(2, territori[difensore].getNumArmate());
+
+	// Genera dadi
+	random_device rd;
+	mt19937 gen(rd());
+	uniform_int_distribution<> dis(1, 6);
+
+	// Crea i dadi per attacco e difesa
+	vector<int> dadiA, dadiD;
+	for (int i = 0; i < dadiAttacco; ++i) dadiA.push_back(dis(gen));
+	for (int i = 0; i < dadiDifesa; ++i) dadiD.push_back(dis(gen));
+
+	// Ordina i dadi in ordine decrescente
+	sort(dadiA.begin(), dadiA.end(), greater<>());
+	sort(dadiD.begin(), dadiD.end(), greater<>());
+
+	// output dei dadi
+	for (int i = 0; i < dadiA.size(); ++i) {
+		windowOutputDadiA += to_string(dadiA[i]) + " ";
+	}
+	for (int i = 0; i < dadiD.size(); ++i) {
+		windowOutputDadiD += to_string(dadiD[i]) + " ";
+	}
+
+	// Confronto dadi e rimozione armate
+	for (int i = 0; i < min(dadiA.size(), dadiD.size()); ++i) {
+		if (dadiA[i] > dadiD[i]) {
+			territori[difensore].offsNumArmate(-1);
+		}
+		else {
+			territori[attaccante].offsNumArmate(-1);
+		}
+	}
+
+	// Controlla se il territorio è stato conquistato
+	if (territori[difensore].getNumArmate() <= 0) {
+		giocatori[difensorePlayer].removeTerritorio(territori[difensore]);
+		giocatori[attaccantePlayer].addTerritorio(territori[difensore]);
+		windowTerritorioNemico = "nessuno";
+		territori[difensore].setNumArmate(dadiAttacco); // si spostano truppe nel territorio conquistato
+		territori[attaccante].offsNumArmate(-dadiAttacco);
+		windowOutputMessage = "Territorio conquistato!";
+
+		if (cartaTerritorio) {
+			giocatori[attaccantePlayer].addCarta(carteDisponibili);
+			cartaTerritorio = false; // reset carta territorio dopo l'attacco
+		}
+
+		if (giocatori[difensorePlayer].getTerritori().size() == 0) {
+			// Se il difensore non ha più territori, viene eliminato dal gioco
+			giocatori[difensorePlayer].setIdAbbattitore(giocatori[attaccantePlayer].getIdGiocatore());
+			windowOutputMessage += " Il giocatore " + giocatori[difensorePlayer].getName() + " è stato eliminato!";
+			// Rimuovi il giocatore
+			giocatori.erase(giocatori.begin() + difensorePlayer);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+bool Sposta(int numArmateSpostamento, vector<Territorio>& territori) {
+	if (numArmateSpostamento > 0) {
+		int amico1 = -1;
+		int amico2 = -1;
+
+		for (int i = 0; i < territori.size(); i++) {
+			if (territori[i].getId() == windowTerritorioAmico1)
+			{
+				amico1 = i;
+			}
+			else if (territori[i].getId() == windowTerritorioAmico2)
+			{
+				amico2 = i;
+			}
+		}
+
+		if (territori[amico2].getNumArmate() > numArmateSpostamento) {
+			territori[amico2].offsNumArmate(-numArmateSpostamento);
+			territori[amico1].offsNumArmate(numArmateSpostamento);
+			windowOutputMessage = "Spostamento riuscito!";
+			trasferimento = false; // disabilita il trasferimento dopo lo spostamento
+			return true;
+
+		}
+		else {
+			windowOutputError = "Numero di armate da spostare superiore a quelle presenti!!!";
+			return false;
+		}
+
+	}
+	else {
+		windowOutputError = "Numero di armate da spostare non valido!!!";
+		return false;
+	}
+}
+
+void calcoloArmate(Player& giocatore) {
+	giocatore.offsNumArmate((int)floor(giocatore.getTerritori().size() / 3));
+	vector<string> continentiConquistati = getConquistaContinenti(giocatore);
+	for (string continente : continentiConquistati) {
+		if (continente == "europa") {
+			giocatore.offsNumArmate(5);
+		}
+		else if (continente == "america del sud") {
+			giocatore.offsNumArmate(2);
+		}
+		else if (continente == "asia") {
+			giocatore.offsNumArmate(7);
+		}
+		else if (continente == "america del nord") {
+			giocatore.offsNumArmate(5);
+		}
+		else if (continente == "africa") {
+			giocatore.offsNumArmate(3);
+		}
+		else if (continente == "oceania") {
+			giocatore.offsNumArmate(2);
+		}
+	}
+}
