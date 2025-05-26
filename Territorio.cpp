@@ -18,6 +18,7 @@ int Territorio::getPuntiControllo() {
 Color Territorio::getColore() {
 	return colore;
 }
+
 bool Territorio::offsNumArmate(int num) { if (numArmate + num >= 0) { numArmate = numArmate + num; return true; } else { return false; } }
 
 void Territorio::setNumArmate(int numArmate) {
@@ -28,8 +29,8 @@ int Territorio::getIdConquistatore() {
 	return idConquistatore;
 }
 
-void Territorio::setIdConquistatore(int idGiocatore) {
-	this->idConquistatore = idGiocatore;
+void Territorio::setIdConquistatore(int idConquistatore) {
+	this->idConquistatore = idConquistatore;
 }
 
 Vector2f Territorio::getPosizione() {

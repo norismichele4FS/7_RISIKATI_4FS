@@ -18,6 +18,7 @@ private:
 	array<int, 4> carte;
 	vector<Territorio> inventarioTerritori; // vettore di territori posseduti dal giocatore corrente
 	int faseGioco; // 0 = schieramento iniziale , 1 = schieramento, 2 = attacco o spostamento, 3 = fine turno
+
 public:
 	Player(string, int, int, string, string);
 	string getName();

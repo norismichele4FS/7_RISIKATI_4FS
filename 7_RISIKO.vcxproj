@@ -136,6 +136,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="7_RISIKO.cpp" />
+    <ClCompile Include="GameLogic.cpp" />
     <ClCompile Include="imgui\imgui-SFML.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_draw.cpp" />
@@ -145,6 +146,7 @@
     <ClCompile Include="Territorio.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="GameLogic.h" />
     <ClInclude Include="imgui\imconfig-SFML.h" />
     <ClInclude Include="imgui\imconfig.h" />
     <ClInclude Include="imgui\imgui-SFML.h" />
@@ -162,10 +164,14 @@
     <Image Include="duck.png" />
     <Image Include="mappa_modificata.png" />
     <Image Include="mappa_originale.png" />
-    <Image Include="tank.png" />
+    <Image Include="tank_finale.png" />
+    <Image Include="tank_icon.png" />
   </ItemGroup>
   <ItemGroup>
     <Font Include="arial.ttf" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

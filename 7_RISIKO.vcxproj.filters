@@ -39,6 +39,9 @@
     <ClCompile Include="imgui\imgui-SFML.cpp">
       <Filter>File di origine</Filter>
     </ClCompile>
+    <ClCompile Include="GameLogic.cpp">
+      <Filter>File di origine</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="resource.h">
@@ -77,6 +80,9 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>File di intestazione</Filter>
     </ClInclude>
+    <ClInclude Include="GameLogic.h">
+      <Filter>File di intestazione</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Image Include="mappa_originale.png">
@@ -85,10 +91,13 @@
     <Image Include="mappa_modificata.png">
       <Filter>File di risorse</Filter>
     </Image>
-    <Image Include="tank.png">
+    <Image Include="duck.png">
       <Filter>File di risorse</Filter>
     </Image>
-    <Image Include="duck.png">
+    <Image Include="tank_finale.png">
+      <Filter>File di risorse</Filter>
+    </Image>
+    <Image Include="tank_icon.png">
       <Filter>File di risorse</Filter>
     </Image>
   </ItemGroup>
@@ -96,5 +105,10 @@
     <Font Include="arial.ttf">
       <Filter>File di risorse</Filter>
     </Font>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="README.md">
+      <Filter>File di risorse</Filter>
+    </None>
   </ItemGroup>
 </Project>

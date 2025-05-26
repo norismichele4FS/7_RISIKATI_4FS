@@ -1,21 +1,21 @@
 #include <iostream>
-#include <SFML/Graphics.hpp>
 #include <string>
-#include <ranges>
 #include <algorithm> // per shuffle
 #include <random>    // per default_random_engine
 #include <chrono>    // per seed del random engine
 
 #include <windows.h>
 #include <sal.h> // Include SAL annotations header
-#include <SFML/Window/WindowHandle.hpp>
 
+#include <SFML/Graphics.hpp>
+#include <SFML/Window/WindowHandle.hpp>
 #include "imgui.h"
 #include "imgui-SFML.h"
 
 #include "Territorio.h"
 #include "Player.h"
 #include "resource.h"
+#include "GameLogic.h"
 
 
 using namespace std;
@@ -28,23 +28,18 @@ using namespace sf;
 	2. forse creare classe logic per suddividere le funzioni in modo piu' ordinato --> non urgente
 */
 
-bool sonoConfinanti(vector<pair<string, string>>&, string, string);
-int winner(Player&, vector<Player>&, vector<Territorio>); // -1 = nessuno, 0 = giocatore 1, 1 = giocatore 2, ecc.
-vector<string> getConquistaContinenti(Player&);
-int getNumTerritori(Player&, int);
 Vector2u getMousePos(RenderWindow&, Sprite&, Image&);
-bool isTerritorioAmico(vector<Territorio>, vector<Player>, int, int);
-void initGiocatori(vector<Player>&, default_random_engine);
-void initTerritori(vector<Player>&, vector<Territorio>&, int);
 bool Attacco(vector<Territorio>&, vector<Player>&, array<int, 4>&);
 bool Sposta(int, vector<Territorio>&);
-void calcoloArmate(Player& giocatore);
 
 int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 {
 	srand(static_cast<unsigned int>(time(0)));
 	size_t seed = chrono::system_clock::now().time_since_epoch().count();
 	default_random_engine engine(static_cast<unsigned int>(seed));
+
+	GameLogic gameLogic;
+
 	vector<Territorio> territori = {
 		// Territori del continente america del sud
 		Territorio("venezuela","america del sud", 3, Color(67,169,176,255), {0.177163f , 0.571429f}),
@@ -77,7 +72,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		Territorio("ontario", "america del nord", 6, Color(229,135,42,255), {0.190498f , 0.285029f}),
 		Territorio("quebec", "america del nord", 3, Color(244,191,79,255), {0.254315f , 0.360397f}),
 		Territorio("alaska", "america del nord", 3, Color(214,173,96,255), {0.109536f , 0.127441f}),
-		Territorio("territori del nord ovest", "america del nord", 4, Color(215,156,104,255), {0.191451f , 0.226105f}),
+		Territorio("territori del nord ovest", "america del nord", 4, Color(215,156,104,255), {0.220025f , 0.150737f}),
 		Territorio("groenlandia", "america del nord", 4, Color(224,65,43,255), {0.358136f , 0.157588f}),
 
 		// Territori del continente oceania
@@ -101,142 +96,33 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		Territorio("cita", "asia", 4, Color(145,173,61,255), {0.703890f , 0.261733f})
 	};
 	std::shuffle(territori.begin(), territori.end(), engine);
-	vector<pair<string, string>> confiniTerritori = {
-		// Territori del continente america del sud
-		{"venezuela", "peru"},
-		{"venezuela", "brasile"},
-		{"peru", "brasile"},
-		{"peru", "argentina"},
-		{"brasile", "argentina"},
-		// Territori del continente africa
-		{"africa del nord","egitto"},
-		{"africa del nord","congo"},
-		{"africa del nord","africa orientale"},
-		{"congo","africa orientale"},
-		{"congo","africa del sud"},
-		{"africa orientale","madagascar"},
-		{"africa orientale","africa del sud"},
-		{"madagascar","africa del sud"},
-		{"egitto","africa orientale"},
-		// Territori del continente europa
-		{"europa occidentale","europa settentrionale"},
-		{"europa occidentale","europa meridionale"},
-		{"europa occidentale","gran bretagna"},
-		{"europa settentrionale","europa meridionale"},
-		{"europa settentrionale","scandinavia"},
-		{"europa settentrionale","ucraina"},
-		{"europa settentrionale","gran bretagna"},
-		{"europa meridionale","ucraina"},
-		{"gran bretagna","scandinavia"},
-		{"scandinavia","islanda"},
-		{"islanda","gran bretagna"},
-		{"scandinavia","ucraina"},
-		// Territori del continente america del nord
-		{"america centrale","stati uniti orientali"},
-		{"america centrale","stati uniti occidentali"},
-		{"stati uniti orientali","stati uniti occidentali"},
-		{"stati uniti orientali","ontario"},
-		{"stati uniti orientali","quebec"},
-		{"stati uniti occidentali","alberta"},
-		{"alberta","ontario"},
-		{"ontario","quebec"},
-		{"quebec","groenlandia"},
-		{"groenlandia","territori del nord ovest"},
-		{"territori del nord ovest","alaska"},
-		{"territori del nord ovest","alberta"},
-		{"alberta","alaska"},
-		{"ontario","groenlandia"},
-		{"ontario","territori del nord ovest"},
-		{"ontario","stati uniti occidentali"},
-		// Territori del continente oceania
-		{"australia occidentale","australia orientale"},
-		{"australia occidentale","nuova guinea"},
-		{"australia orientale","nuova guinea"},
-		{"nuova guinea","indonesia"},
-		{"australia occidentale","indonesia"},
-		// Territori del continente asia
-		{"cina","mongolia"},
-		{"cina","siberia"},
-		{"cina","urali"},
-		{"cina","afghanistan"},
-		{"cina","medio oriente"},
-		{"cina","india"},
-		{"cina","siam"},
-		{"siam","india"},
-		{"india","medio oriente"},
-		{"medio oriente","afghanistan"},
-		{"afghanistan","urali"},
-		{"siberia","urali"},
-		{"siberia","jacuzia"},
-		{"siberia","cita"},
-		{"siberia","mongolia"},
-		{"jacuzia","kamchatka"},
-		{"jacuzia","cita"},
-		{"cita","mongolia"},
-		{"mongolia","kamchatka"},
-		{"kamchatka","giappone"},
-		{"kamchatka","cita"},
-		{"mongolia","giappone"},
-		// Territori intercontinentali
-		{"groenlandia","islanda"},
-		{"alaska","kamchatka"},
-		{"america centrale","venezuela"},
-		{"brasile","africa del nord"},
-		{"africa del nord","europa occidentale"},
-		{"africa del nord","europa meridionale"},
-		{"egitto","europa meridionale"},
-		{"egitto","medio oriente"},
-		{"europa meridionale","medio oriente"},
-		{"siam","indonesia"},
-		{"ucraina","medio oriente"},
-		{"ucraina","afghanistan"},
-		{"ucraina","urali"}
-	};
 	vector<Player> giocatori;
-	array<int, 4> carteDisponibili = { 14, 14, 14, 2 }; //numero di carte per simbolo disponibili - 14 per i 3 simboli e 2 per il jolly (fan, cav, can, jol)
-	int territorioSelezionato = -1;
-	int numArmateSpostamento = 1;
-	static const char* items[]{ "Fante","Cavallo","Cannone", "Jolly" };
-	static int selectedItem[3] = { 0, 0, 0 };
-	int sommaCarte[4] = { 0, 0, 0, 0 }; // per il calcolo delle carte da utilizzare per lo schieramento
 
-	Font font("arial.ttf");
-	Image mappa_modificata;
-	Texture mappa_originale;
-	Texture tankTexture;
 	if (!mappa_originale.loadFromFile("mappa_originale.png")) {}
 	if (!mappa_modificata.loadFromFile("mappa_modificata.png")) {}
-	if (!tankTexture.loadFromFile("tank.png")) {}
+	if (!tankTexture.loadFromFile("tank_finale.png")) {}
+	if (!icon.loadFromFile("tank_icon.png")) {}
 	Sprite sprite_mappa_originale(mappa_originale);
 
-	vector<Sprite> sprite_tanks;
 	for (int i = 0; i < territori.size(); i++) {
 		sprite_tanks.push_back(Sprite(tankTexture));
 	}
 
-	Color temp;
-
-	initGiocatori(giocatori, engine);
+	gameLogic.initGiocatori(giocatori, engine);
 	int turnoGiocatore = rand() % giocatori.size();
-	initTerritori(giocatori, territori, turnoGiocatore);
+	gameLogic.initTerritori(giocatori, territori, turnoGiocatore);
 	int turnoIniziale = turnoGiocatore; // Salva il turno iniziale per il reset del turno
-
-
-	// Crea lo sprite della mappa originale
 
 	float imageWindowsRatio = 0.25f;
 	float scaleRatioY = (float)mappa_originale.getSize().y / mappa_originale.getSize().x;
 	unsigned int originalWidth = 1400;
-
 	unsigned int original_map_x = mappa_originale.getSize().x;
 	unsigned int original_map_y = mappa_originale.getSize().y;
-
 	// Crea la finestra
 	RenderWindow map_window(VideoMode({ originalWidth, (unsigned int)(originalWidth * scaleRatioY) }), "RISIKO", Style::Titlebar | Style::Resize | Style::Close);
-
 	View view = View(FloatRect({ 0.f, 0.f }, { static_cast<float>(map_window.getSize().x), static_cast<float>(map_window.getSize().y) }));
-
 	VideoMode desktop = VideoMode::getDesktopMode();
+	map_window.setIcon(icon);
 	// Center the window on the screen
 	map_window.setPosition({ (int)(desktop.size.x - map_window.getSize().x) / 2, 0 });
 
@@ -281,10 +167,9 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 	// Disabilita evidenziazione al click e hover sulla finestra
 	style.Colors[ImGuiCol_TitleBg] = style.Colors[ImGuiCol_TitleBgActive];
 
-	Clock deltaClock;
-
 	while (map_window.isOpen())
 	{
+		//event logger
 		while (const auto event = map_window.pollEvent())
 		{
 			ImGui::SFML::ProcessEvent(map_window, *event);
@@ -331,11 +216,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 				{
 
 					//funzione di calcolo delle coordinate per modificare posizione carri armati nel vettore territori
-					//windowOutput = to_string((float)Mouse::getPosition(map_window).x / sprite_mappa_originale.getGlobalBounds().size.x) + "f , " + to_string((float)Mouse::getPosition(map_window).y / sprite_mappa_originale.getGlobalBounds().size.y) + "f";
+					//windowOutputError = to_string((float)Mouse::getPosition(map_window).x / sprite_mappa_originale.getGlobalBounds().size.x) + "f , " + to_string((float)Mouse::getPosition(map_window).y / sprite_mappa_originale.getGlobalBounds().size.y) + "f";
 
-					temp = mappa_modificata.getPixel(getMousePos(map_window, sprite_mappa_originale, mappa_modificata));
+					tempColor = mappa_modificata.getPixel(getMousePos(map_window, sprite_mappa_originale, mappa_modificata));
 					for (int i = 0; i < territori.size(); i++) {
-						if (temp == territori[i].getColore()) {
+						if (tempColor == territori[i].getColore()) {
 							territorioSelezionato = i;
 						}
 					}
@@ -344,10 +229,8 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 		}
 
-
-		///creazione game loop a fasi di gioco per giocatore
-
-		if (winner(giocatori[turnoGiocatore], giocatori, territori) == -1) {
+		//creazione game loop a fasi di gioco per giocatore
+		if (gameLogic.winner(giocatori[turnoGiocatore], giocatori, territori) == -1) {
 			switch (giocatori[turnoGiocatore].getFaseGioco()) {
 
 			case 0:
@@ -373,9 +256,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 				windowOutputMessage = "Utilizzare combo carte e poi schierare tutte le armate";
 				if (onetime) {
 					statusAttacco_Spostamento = false;
+					statusPassoTurno = false;
 					statusSchieramento = true;
 					statusCarte = true;
-					calcoloArmate(giocatori[turnoGiocatore]);
+					gameLogic.calcoloArmate(giocatori[turnoGiocatore]);
 					onetime = false;
 				}
 
@@ -393,6 +277,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 					statusAttacco_Spostamento = true;
 					statusSchieramento = false;
 					statusCarte = false;
+					statusPassoTurno = true;
 					onetime = false;
 				}
 				break;
@@ -416,6 +301,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			statusAttacco_Spostamento = false;
 			statusCarte = false;
 			statusSchieramento = false;
+			statusPassoTurno = false;
 			windowOutputMessage = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
 			windowOutputError = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
 			windowOutputDadiA = "!!! Il giocatore " + giocatori[turnoGiocatore].getName() + " ha vinto !!!";
@@ -426,7 +312,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		// set output territori selezionati
 		if (territorioSelezionato != -1) {
 
-			if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
+			if (gameLogic.isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
 				if (territori[territorioSelezionato].getId() != windowTerritorioAmico1) {
 					windowTerritorioAmico2 = windowTerritorioAmico1;
 					windowTerritorioAmico1 = territori[territorioSelezionato].getId();
@@ -447,17 +333,20 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		ImGui::Begin("Giocatori", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse);
 		for (int i = 0; i < giocatori.size(); i++) {
 			if (i != 0) {
-				ImGui::Separator();
 				ImGui::NewLine();
+				ImGui::Separator();
 			}
+			ImGui::NewLine();
 			ImGui::TextWrapped("Nome: %s", giocatori[i].getName().c_str());
 			ImGui::TextWrapped("Id giocatore: %s", to_string(giocatori[i].getIdGiocatore()).c_str());
 			ImGui::TextWrapped("Colore: %s", giocatori[i].getColore().c_str());
-			ImGui::TextWrapped("Fanti: %s", to_string(giocatori[i].getCarte()[0]).c_str());
-			ImGui::TextWrapped("Cavalli: %s", to_string(giocatori[i].getCarte()[1]).c_str());
-			ImGui::TextWrapped("Cannoni: %s", to_string(giocatori[i].getCarte()[2]).c_str());
-			ImGui::TextWrapped("Jolly: %s", to_string(giocatori[i].getCarte()[3]).c_str());
-			ImGui::TextWrapped("Obiettivo: %s", giocatori[i].getObbiettivo().c_str());
+			if (i == turnoGiocatore) {
+				ImGui::TextWrapped("Fanti: %s", to_string(giocatori[i].getCarte()[0]).c_str());
+				ImGui::TextWrapped("Cavalli: %s", to_string(giocatori[i].getCarte()[1]).c_str());
+				ImGui::TextWrapped("Cannoni: %s", to_string(giocatori[i].getCarte()[2]).c_str());
+				ImGui::TextWrapped("Jolly: %s", to_string(giocatori[i].getCarte()[3]).c_str());
+				ImGui::TextWrapped("Obiettivo: %s", giocatori[i].getObbiettivo().c_str());
+			}
 		}
 		ImGui::End();
 
@@ -489,7 +378,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			if (ImGui::Button("Attacco")) {
 				resetOutput();
 				if (windowTerritorioAmico1 != "nessuno" && windowTerritorioNemico != "nessuno") {
-					if (sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioNemico)) {
+					if (gameLogic.sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioNemico)) {
 						if (Attacco(territori, giocatori, carteDisponibili)) {
 							windowOutputMessage = "Attacco riuscito!";
 						}
@@ -498,11 +387,11 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 						}
 					}
 					else {
-						windowOutputError = "territori non confinanti!!!";
+						windowOutputError = "Territori non confinanti!!!";
 					}
 				}
 				else {
-					windowOutputError = "territori selezionati insufficienti!!!";
+					windowOutputError = "Territori selezionati insufficienti!!!";
 				}
 			}
 			ImGui::SameLine();
@@ -530,27 +419,45 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 				sommaCarte[i] = 0; // Inizializza il conteggio delle carte
 			}
 
-			for (int i = 0; i < giocatori[turnoGiocatore].getCarte().size(); i++) {
+			for (int i = 0; i < 3; i++) {
 				sommaCarte[selectedItem[i]]++; // Inizializza il conteggio delle carte
 			}
 
 			if (ImGui::Button("Schiera combo")) {
 				resetOutput();
 				if (giocatori[turnoGiocatore].removeCarte(sommaCarte[0], sommaCarte[1], sommaCarte[2], sommaCarte[3])) {
-					if (sommaCarte[2] == 3) {
-						giocatori[turnoGiocatore].offsNumArmate(4);
-					}
-					else if (sommaCarte[0] == 3) {
-						giocatori[turnoGiocatore].offsNumArmate(6);
+					if (sommaCarte[0] == 3) {
+						giocatori[turnoGiocatore].offsNumArmate(6); //fanti
+						for (int i = 0; i < carteDisponibili.size(); i++) {
+							carteDisponibili[i] = sommaCarte[i];
+						}
 					}
 					else if (sommaCarte[1] == 3) {
-						giocatori[turnoGiocatore].offsNumArmate(8);
+						giocatori[turnoGiocatore].offsNumArmate(8); //cavallo
+						for (int i = 0; i < carteDisponibili.size(); i++) {
+							carteDisponibili[i] = sommaCarte[i];
+						}
+					}
+					else if (sommaCarte[2] == 3) {
+						giocatori[turnoGiocatore].offsNumArmate(4); //cannoni
+						for (int i = 0; i < carteDisponibili.size(); i++) {
+							carteDisponibili[i] = sommaCarte[i];
+						}
 					}
 					else if (sommaCarte[0] == 1 && sommaCarte[1] == 1 && sommaCarte[2] == 1) {
 						giocatori[turnoGiocatore].offsNumArmate(10);
+						for (int i = 0; i < carteDisponibili.size(); i++) {
+							carteDisponibili[i] = sommaCarte[i];
+						}
 					}
 					else if (sommaCarte[3] == 1 && (sommaCarte[0] == 2 || sommaCarte[1] == 2 || sommaCarte[2] == 2)) {
 						giocatori[turnoGiocatore].offsNumArmate(12);
+						for (int i = 0; i < carteDisponibili.size(); i++) {
+							carteDisponibili[i] = sommaCarte[i];
+						}
+					}
+					else {
+						windowOutputError = "Combo non valida!!!";
 					}
 				}
 				else {
@@ -564,14 +471,18 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 		if (statusSchieramento) {
 			if (ImGui::Button("+")) {
 				resetOutput();
-				//problema durante altri turni possono modificare armate di altri giocatori
-				if (isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
-					if (!giocatori[turnoGiocatore].placeNumArmate(1, territori[territorioSelezionato])) {
-						windowOutputError = "Impossibile schierare altre armate!!!";
+				if (territorioSelezionato != -1) {
+					if (gameLogic.isTerritorioAmico(territori, giocatori, territorioSelezionato, turnoGiocatore)) {
+						if (!giocatori[turnoGiocatore].placeNumArmate(1, territori[territorioSelezionato])) {
+							windowOutputError = "Impossibile schierare altre armate!!!";
+						}
+					}
+					else {
+						windowOutputError = "Non puoi modificare le armate di un territorio nemico!!!";
 					}
 				}
 				else {
-					windowOutputError = "Non puoi modificare le armate di un territorio nemico!!!";
+					windowOutputError = "Nessun territorio selezionato!!!";
 				}
 			}
 			ImGui::SameLine();
@@ -587,11 +498,12 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 				resetOutput();
 				if (windowTerritorioAmico1 != "nessuno" && windowTerritorioAmico2 != "nessuno") {
 					if (windowTerritorioAmico1 != windowTerritorioAmico2) {
-						if (sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioAmico2)) {
+						if (gameLogic.sonoConfinanti(confiniTerritori, windowTerritorioAmico1, windowTerritorioAmico2)) {
 							Sposta(numArmateSpostamento, territori);
+							statusAttacco_Spostamento = false; // Disabilita lo stato di attacco dopo lo spostamento
 						}
 						else {
-							windowOutputError = "territori non confinanti!!!";
+							windowOutputError = "Territori non confinanti!!!";
 						}
 					}
 					else {
@@ -599,7 +511,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 					}
 				}
 				else {
-					windowOutputError = "territori selezionati insufficienti!!!";
+					windowOutputError = "Territori selezionati insufficienti!!!";
 				}
 			}
 			ImGui::TextWrapped((windowTerritorioAmico2 + "  --> ").c_str());
@@ -608,8 +520,10 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			ImGui::Separator();
 		}
 
-		if (ImGui::Button("passo turno")) {
-			giocatori[turnoGiocatore].setFaseGioco(3);
+		if (statusPassoTurno) {
+			if (ImGui::Button("passo turno")) {
+				giocatori[turnoGiocatore].setFaseGioco(3);
+			}
 		}
 
 		ImGui::End();
@@ -662,7 +576,7 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			}
 
 			// Imposta la scala dello sprite in base alla scala della mappa
-			sprite_tanks[i].setScale({ finalScale * 0.055f, finalScale * 0.055f });
+			sprite_tanks[i].setScale({ finalScale * 0.085f, finalScale * 0.085f });
 
 			// Imposta l'origine al centro dello sprite
 			sprite_tanks[i].setOrigin({ sprite_tanks[i].getLocalBounds().size.x / 2.f, sprite_tanks[i].getLocalBounds().size.y / 2.f });
@@ -678,14 +592,16 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 			Text armyText(font);
 			armyText.setString(to_string(territori[i].getNumArmate()));
 			//armyText.setCharacterSize(15);
-			armyText.setScale({ finalScale * 0.7f,  finalScale * 0.7f });
+			///armyText.setScale({ finalScale * 0.7f,  finalScale * 0.7f });
+			armyText.setScale({ finalScale * 0.8f,  finalScale * 0.8f });
 			armyText.setFillColor(Color::White);
-			//armyText.setOutlineColor(sf::Color::Black);
-			armyText.setOutlineThickness(2);
-			armyText.setOrigin({ armyText.getLocalBounds().size.x / 2.f, armyText.getLocalBounds().size.y / 2.f });
+			armyText.setOutlineColor(sf::Color::Black);
+			///armyText.setOrigin({ armyText.getLocalBounds().size.x / 2.f, armyText.getLocalBounds().size.y / 2.f });
+			armyText.setOrigin({ armyText.getLocalBounds().size.x / 2.f, 0.f });
 
 			// Centra il testo sopra il carro
-			armyText.setPosition({ sprite_tanks[i].getPosition().x ,sprite_tanks[i].getPosition().y });
+			armyText.setPosition({ sprite_tanks[i].getPosition().x ,sprite_tanks[i].getPosition().y + armyText.getLocalBounds().size.y / 2.f - armyText.getLocalBounds().size.y * 0.05f });
+			armyText.setOutlineThickness(5);
 
 			map_window.draw(armyText);
 		}
@@ -695,10 +611,6 @@ int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _
 
 	ImGui::SFML::Shutdown(); // Cleanup ImGui
 	return 0;
-}
-
-bool isTerritorioAmico(vector<Territorio> territori, vector<Player> giocatori, int territorioSelezionato, int turnoGiocatore) {
-	return (territori[territorioSelezionato].getIdConquistatore() == giocatori[turnoGiocatore].getIdGiocatore());
 }
 
 Vector2u getMousePos(RenderWindow& map_window, Sprite& sprite_mappa_originale, Image& mappa_modificata) {
@@ -718,379 +630,6 @@ Vector2u getMousePos(RenderWindow& map_window, Sprite& sprite_mappa_originale, I
 	relativeY = clamp(relativeY, 0.f, (float)mappa_modificata.getSize().y - 1);
 
 	return Vector2u((unsigned int)relativeX, (unsigned int)relativeY);
-}
-
-bool sonoConfinanti(vector<pair<string, string>>& confiniTerritori, string a, string b) {
-	for (auto& coppia : confiniTerritori) {
-		if ((coppia.first == a && coppia.second == b) ||
-			(coppia.first == b && coppia.second == a)) {
-			return true;
-		}
-	}
-	return false;
-}
-
-vector<string> getConquistaContinenti(Player& giocatore) {
-	int contEuropa = 7, contAmericaDelSud = 4, contAsia = 12, contAmericaDelNord = 9, contAfrica = 6, contOceania = 4; //conto territori mancanti alla conquista del continente
-	vector<string> continentiConquistati;
-	string tempIdContinente;
-
-	for (int i = 0; i < giocatore.getTerritori().size(); i++)
-	{
-		tempIdContinente = giocatore.getTerritori()[i].getIdContinente();
-		if (tempIdContinente == "europa")
-		{
-			contEuropa--;
-			if (contEuropa == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-		else if (tempIdContinente == "america del sud")
-		{
-			contAmericaDelSud--;
-			if (contAmericaDelSud == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-		else if (tempIdContinente == "asia")
-		{
-			contAsia--;
-			if (contAsia == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-		else if (tempIdContinente == "america del nord")
-		{
-			contAmericaDelNord--;
-			if (contAmericaDelNord == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-		else if (tempIdContinente == "africa")
-		{
-			contAfrica--;
-			if (contAfrica == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-		else if (tempIdContinente == "oceania")
-		{
-			contOceania--;
-			if (contOceania == 0)
-			{
-				continentiConquistati.push_back(tempIdContinente);
-			}
-		}
-
-	}
-	return continentiConquistati;
-}
-
-int getNumTerritori(Player& giocatore, int nArmateMinime) {
-	int tempNumArmate = 0;
-	for (int i = 0; i < giocatore.getTerritori().size(); i++)
-	{
-		if (giocatore.getTerritori()[i].getNumArmate() >= nArmateMinime) {
-			tempNumArmate++;
-		}
-	}
-	return tempNumArmate;
-}
-
-void initGiocatori(vector<Player>& giocatori, default_random_engine engine)
-{
-	AllocConsole();
-
-	FILE* fp;
-	freopen_s(&fp, "CONOUT$", "w", stdout);
-	freopen_s(&fp, "CONIN$", "r", stdin);
-
-	int numGiocatori;
-	string nomeGiocatore;
-	int armateIniziali;
-	vector <string> coloriGiocatori = { "rosso", "blu", "giallo", "verde", "nero", "viola" };
-	vector <string> obbiettivi = {
-		"Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.",
-		"Conquistare l’Asia e l’America del Sud.",
-		"Conquistare l’America del Nord e l’Africa.",
-		"Conquistare l’America del Nord e l’Oceania.",
-		"Conquistare l’Europa e l’Oceania.",
-		"Conquistare l’Asia e l’Africa.",
-		"Conquistare l’America del Nord e l’America del Sud.",
-		"Conquistare l’Europa e l’America del Nord.",
-		"Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)",
-		"Conquistare 24 territori a tua scelta.",
-		"Conquistare 18 territori con almeno due armate ciascuno."
-	};
-	std::shuffle(coloriGiocatori.begin(), coloriGiocatori.end(), engine);
-	std::shuffle(obbiettivi.begin(), obbiettivi.end(), engine);
-
-	do
-	{
-
-		cout << "inserire il numero di giocatori" << endl;
-		cin >> numGiocatori;
-		cin.ignore();
-		if (numGiocatori < 3 || numGiocatori > 6)
-		{
-			cout << "numero di giocatori non valido (valido da 3 a 6)" << endl;
-		}
-	} while (numGiocatori < 3 || numGiocatori > 6);
-
-	armateIniziali = 35 - (numGiocatori - 3) * 5; // calcolo armate iniziali in base al numero di giocatori
-
-	for (int i = 0; i < numGiocatori; i++)
-	{
-		cout << "inserire il nome del giocatore " << i + 1 << endl;
-		getline(cin, nomeGiocatore);
-		giocatori.push_back(Player(nomeGiocatore, i, armateIniziali, coloriGiocatori[i], obbiettivi[i])); //idGiocatore corrisponde anche alla posizione nell'array giocatori
-	}
-
-	HWND consoleWindow = GetConsoleWindow();
-	if (consoleWindow)
-	{
-		ShowWindow(consoleWindow, SW_HIDE);
-		FreeConsole();
-	}
-}
-
-int checkObbiettivoColore(Player& giocatore, string colore, vector<Player>& giocatori, vector<Territorio> territori) {
-	int idTarget = -1;
-	for (Player& g : giocatori) {
-		if (g.getColore() == colore) {
-			idTarget = g.getIdGiocatore();
-			break;
-		}
-	}
-	if (idTarget != -1) {
-		if (giocatori[idTarget].getIdGiocatore() != giocatore.getIdGiocatore() && giocatori[idTarget].getIdAbbattitore() == giocatore.getIdGiocatore()) {
-			return -1;
-		}
-		else {
-			giocatore.setObbiettivo("Conquistare 24 territori a tua scelta.");
-			return winner(giocatore, giocatori, territori);
-		}
-	}
-	else {
-		return -1;
-	}
-}
-
-int winner(Player& giocatore, vector<Player>& giocatori, vector<Territorio> territori)
-{
-	using namespace ranges;
-	string obbiettivo = giocatore.getObbiettivo();
-
-	if (obbiettivo == "Conquistare l’Europa, l’America del Sud e un terzo continente a scelta.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "europa") &&
-			contains(getConquistaContinenti(giocatore), "america del sud") &&
-			(contains(getConquistaContinenti(giocatore), "asia") ||
-				contains(getConquistaContinenti(giocatore), "america del nord") ||
-				contains(getConquistaContinenti(giocatore), "africa") ||
-				contains(getConquistaContinenti(giocatore), "oceania"))
-			)
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’Asia e l’America del Sud.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "asia") &&
-			contains(getConquistaContinenti(giocatore), "america del sud"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’America del Nord e l’Africa.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "america del nord") &&
-			contains(getConquistaContinenti(giocatore), "africa"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-
-	}
-	else if (obbiettivo == "Conquistare l’America del Nord e l’Oceania.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "america del nord") &&
-			contains(getConquistaContinenti(giocatore), "oceania"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’Europa e l’Oceania.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "europa") &&
-			contains(getConquistaContinenti(giocatore), "oceania"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’Asia e l’Africa.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "asia") &&
-			contains(getConquistaContinenti(giocatore), "africa"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’America del Nord e l’America del Sud.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "america del nord") &&
-			contains(getConquistaContinenti(giocatore), "america del sud"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’Europa e l’America del Nord.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "europa") &&
-			contains(getConquistaContinenti(giocatore), "america del nord"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’America del Nord e l’America del Sud.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "america del nord") &&
-			contains(getConquistaContinenti(giocatore), "america del sud"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare l’Europa e l’America del Nord.")
-	{
-		if (contains(getConquistaContinenti(giocatore), "europa") &&
-			contains(getConquistaContinenti(giocatore), "america del nord"))
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore rosso. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "rosso", giocatori, territori);
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore blu. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "blu", giocatori, territori);
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore giallo. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "giallo", giocatori, territori);
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore verde. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "verde", giocatori, territori);
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore nero. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "nero", giocatori, territori);
-	}
-	else if (obbiettivo == "Distruggere tutte le armate del giocatore di colore viola. (Se le armate non sono presenti nel gioco, se le armate sono possedute dal giocatore che ha l'obiettivo di distruggerle o se l'ultima armata viene distrutta da un altro giocatore, l'obiettivo diventa conquistare 24 territori.)")
-	{
-		return checkObbiettivoColore(giocatore, "viola", giocatori, territori);
-	}
-	else if (obbiettivo == "Conquistare 24 territori a tua scelta.")
-	{
-		if (getNumTerritori(giocatore, 1) >= 24)
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else if (obbiettivo == "Conquistare 18 territori con almeno due armate ciascuno.")
-	{
-		if (getNumTerritori(giocatore, 2) >= 18)
-		{
-			return giocatore.getIdGiocatore();
-		}
-		else
-		{
-			return -1;
-		}
-	}
-	else
-	{
-		return -1;
-	}
-}
-
-void initTerritori(vector<Player>& giocatori, vector<Territorio>& territori, int turnoGiocatore) {
-	int territoriAssegnati = 0;
-	int i = turnoGiocatore;
-
-	while (territoriAssegnati < territori.size()) {
-
-		if (territoriAssegnati < territori.size()) {
-			giocatori[i].addTerritorio(territori[territoriAssegnati]);
-			giocatori[i].placeNumArmate(1, territori[territoriAssegnati]);
-			territoriAssegnati++;
-		}
-		else {
-			break;
-		}
-
-		if (i == giocatori.size() - 1) {
-			i = 0;
-		}
-		else {
-			i++;
-		}
-	}
 }
 
 bool Attacco(vector<Territorio>& territori, vector<Player>& giocatori, array<int, 4>& carteDisponibili) {
@@ -1131,7 +670,7 @@ bool Attacco(vector<Territorio>& territori, vector<Player>& giocatori, array<int
 
 	// Numero dadi
 	int dadiAttacco = min(3, territori[attaccante].getNumArmate() - 1);
-	int dadiDifesa = min(2, territori[difensore].getNumArmate());
+	int dadiDifesa = min(3, territori[difensore].getNumArmate());
 
 	// Genera dadi
 	random_device rd;
@@ -1166,7 +705,7 @@ bool Attacco(vector<Territorio>& territori, vector<Player>& giocatori, array<int
 	}
 
 	// Controlla se il territorio è stato conquistato
-	if (territori[difensore].getNumArmate() <= 0) {
+	if (territori[difensore].getNumArmate() == 0) {
 		giocatori[difensorePlayer].removeTerritorio(territori[difensore]);
 		giocatori[attaccantePlayer].addTerritorio(territori[difensore]);
 		windowTerritorioNemico = "nessuno";
@@ -1176,15 +715,13 @@ bool Attacco(vector<Territorio>& territori, vector<Player>& giocatori, array<int
 
 		if (cartaTerritorio) {
 			giocatori[attaccantePlayer].addCarta(carteDisponibili);
-			cartaTerritorio = false; // reset carta territorio dopo l'attacco
+			cartaTerritorio = false; // reset carta territorio a fine turno
 		}
 
 		if (giocatori[difensorePlayer].getTerritori().size() == 0) {
 			// Se il difensore non ha più territori, viene eliminato dal gioco
 			giocatori[difensorePlayer].setIdAbbattitore(giocatori[attaccantePlayer].getIdGiocatore());
 			windowOutputMessage += " Il giocatore " + giocatori[difensorePlayer].getName() + " è stato eliminato!";
-			// Rimuovi il giocatore
-			giocatori.erase(giocatori.begin() + difensorePlayer);
 			return true;
 		}
 	}
@@ -1208,7 +745,7 @@ bool Sposta(int numArmateSpostamento, vector<Territorio>& territori) {
 			}
 		}
 
-		if (territori[amico2].getNumArmate() > numArmateSpostamento) {
+		if (territori[amico2].getNumArmate() > numArmateSpostamento) { //spostamento dal 2 all'1
 			territori[amico2].offsNumArmate(-numArmateSpostamento);
 			territori[amico1].offsNumArmate(numArmateSpostamento);
 			windowOutputMessage = "Spostamento riuscito!";
@@ -1228,27 +765,3 @@ bool Sposta(int numArmateSpostamento, vector<Territorio>& territori) {
 	}
 }
 
-void calcoloArmate(Player& giocatore) {
-	giocatore.offsNumArmate((int)floor(giocatore.getTerritori().size() / 3));
-	vector<string> continentiConquistati = getConquistaContinenti(giocatore);
-	for (string continente : continentiConquistati) {
-		if (continente == "europa") {
-			giocatore.offsNumArmate(5);
-		}
-		else if (continente == "america del sud") {
-			giocatore.offsNumArmate(2);
-		}
-		else if (continente == "asia") {
-			giocatore.offsNumArmate(7);
-		}
-		else if (continente == "america del nord") {
-			giocatore.offsNumArmate(5);
-		}
-		else if (continente == "africa") {
-			giocatore.offsNumArmate(3);
-		}
-		else if (continente == "oceania") {
-			giocatore.offsNumArmate(2);
-		}
-	}
-}
