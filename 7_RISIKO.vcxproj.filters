@@ -97,9 +97,4 @@
       <Filter>File di risorse</Filter>
     </Font>
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="7_RISIKO1.rc">
-      <Filter>File di risorse</Filter>
-    </ResourceCompile>
-  </ItemGroup>
 </Project>

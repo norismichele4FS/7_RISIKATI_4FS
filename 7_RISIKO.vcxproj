@@ -167,9 +167,6 @@
   <ItemGroup>
     <Font Include="arial.ttf" />
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="7_RISIKO1.rc" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
