@@ -1,7 +1,3 @@
-Ecco una versione formattata e migliorata del tuo testo per maggiore chiarezza e leggibilità:
-
----
-
 # **Risiko C++/SFML**
 
 **Risiko** è una versione digitale del celebre gioco da tavolo, sviluppata in **C++** utilizzando la libreria grafica **SFML** e l’interfaccia utente **ImGui**.
