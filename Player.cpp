@@ -82,7 +82,7 @@ void Player::setFaseGioco(int faseGioco) { this->faseGioco = faseGioco; }
 
 int Player::getFaseGioco() { return faseGioco; }
 
-vector<Territorio> Player::getTerritori()
+vector<Territorio>& Player::getTerritori()
 {
 	return inventarioTerritori;
 }

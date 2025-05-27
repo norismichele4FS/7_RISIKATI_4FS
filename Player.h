@@ -29,7 +29,7 @@ public:
 	void addCarta(array<int, 4>&);
 	void addTerritorio(Territorio&);
 	void removeTerritorio(Territorio&);
-	vector<Territorio> getTerritori();
+	vector<Territorio>& getTerritori();
 	bool removeCarte(int, int, int, int);
 	array<int, 4> getCarte();
 	int getIdGiocatore();

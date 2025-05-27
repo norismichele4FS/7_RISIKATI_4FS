@@ -77,11 +77,11 @@ bool GameLogic::sonoConfinanti(vector<pair<string, string>>& confiniTerritori, s
 	return false;
 }
 
-int GameLogic::getNumTerritori(Player& giocatore, int nArmateMinime) {
+int GameLogic::getNumTerritori(Player& giocatore, int nArmateMinime, vector<Territorio> territori) {
 	int tempNumArmate = 0;
 	for (int i = 0; i < giocatore.getTerritori().size(); i++)
 	{
-		if (giocatore.getTerritori()[i].getNumArmate() >= nArmateMinime) {
+		if (territori[i].getNumArmate() >= nArmateMinime) {
 			tempNumArmate++;
 		}
 	}
@@ -329,7 +329,7 @@ int GameLogic::winner(Player& giocatore, vector<Player>& giocatori, vector<Terri
 	}
 	else if (obbiettivo == "Conquistare 24 territori a tua scelta.")
 	{
-		if (getNumTerritori(giocatore, 1) >= 24)
+		if (getNumTerritori(giocatore, 1, territori) >= 24)
 		{
 			return giocatore.getIdGiocatore();
 		}
@@ -340,7 +340,7 @@ int GameLogic::winner(Player& giocatore, vector<Player>& giocatori, vector<Terri
 	}
 	else if (obbiettivo == "Conquistare 18 territori con almeno due armate ciascuno.")
 	{
-		if (getNumTerritori(giocatore, 2) >= 18)
+		if (getNumTerritori(giocatore, 2, territori) >= 18)
 		{
 			return giocatore.getIdGiocatore();
 		}
